@@ -23,7 +23,7 @@ function CoursesForm({
       <Form.Group className="mb-3">
         <Form.Label htmlFor="code">Course Code</Form.Label>
         <Form.Control
-          data-testid={testIdPrefix + "-"}
+          data-testid={testIdPrefix + "-code"}
           id="code"
           type="text"
           isInvalid={Boolean(errors.code)}
