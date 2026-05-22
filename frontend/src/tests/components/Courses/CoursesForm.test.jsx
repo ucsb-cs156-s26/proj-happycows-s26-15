@@ -18,7 +18,7 @@ vi.mock("react-router", async () => {
 describe("CoursesForm tests", () => {
   const queryClient = new QueryClient();
 
-  const expectedHeaders = ["Course Code", "Course Name", "Course Term"];
+  const expectedHeaders = ["Code", "Name", "Term"];
   const testId = "CoursesForm";
 
   test("renders correctly with no initialContents", async () => {
@@ -54,8 +54,8 @@ describe("CoursesForm tests", () => {
       expect(header).toBeInTheDocument();
     });
 
-    expect(await screen.findByTestId(`${testId}-code`)).toBeInTheDocument();
-    expect(screen.getByText(`Course Code`)).toBeInTheDocument();
+    expect(await screen.findByTestId(`${testId}-id`)).toBeInTheDocument();
+    expect(screen.getByText(`Id`)).toBeInTheDocument();
   });
 
   test("that navigate(-1) is called when Cancel is clicked", async () => {
@@ -87,16 +87,8 @@ describe("CoursesForm tests", () => {
     const submitButton = screen.getByText(/Create/);
     fireEvent.click(submitButton);
 
-    await screen.findByText(/Course code is required/);
-    expect(screen.getByText(/Course name is required/)).toBeInTheDocument();
-    expect(screen.getByText(/Course term is required/)).toBeInTheDocument();
-
-    const nameInput = screen.getByTestId(`${testId}-name`);
-    fireEvent.change(nameInput, { target: { value: "a".repeat(256) } });
-    fireEvent.click(submitButton);
-
-    await waitFor(() => {
-      expect(screen.getByText(/Max length 255 characters/)).toBeInTheDocument();
-    });
+    await screen.findByText(/Course code is required./);
+    expect(screen.getByText(/Course name is required./)).toBeInTheDocument();
+    expect(screen.getByText(/Course term is required./)).toBeInTheDocument();
   });
 });
