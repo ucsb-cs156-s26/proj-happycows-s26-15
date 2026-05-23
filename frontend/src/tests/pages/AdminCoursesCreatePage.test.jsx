@@ -112,8 +112,8 @@ describe("CoursesCreatePage tests", () => {
 
     // assert - check that the toast was called with the expected message
     expect(mockToast).toBeCalledWith(
-      "New course Created - id: 3 name: Linear Algebra",
+      "New Course Created - id: 3 code: MATH 4A",
     );
-    expect(mockNavigate).toBeCalledWith({ to: "/course" });
+    expect(mockNavigate).toBeCalledWith({ to: "/admin/createcourses" });
   });
 });

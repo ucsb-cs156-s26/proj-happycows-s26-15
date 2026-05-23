@@ -56,7 +56,7 @@ export default function CoursesEditPage({ storybook = false }) {
   };
 
   if (isSuccess && !storybook) {
-    return <Navigate to="/course" />;
+    return <Navigate to="/admin/editcourses/:id" />;
   }
 
   return (

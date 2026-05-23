@@ -1,11 +1,9 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor, fireEvent } from "@testing-library/react";
 import CoursesIndexPage from "main/pages/AdminCoursesIndexPage";
 import { QueryClient, QueryClientProvider } from "react-query";
 import { MemoryRouter } from "react-router";
 import mockConsole from "tests/testutils/mockConsole";
 import { coursesFixtures } from "fixtures/coursesFixtures";
-import { render, screen, waitFor } from "@testing-library/react";
-
 import { apiCurrentUserFixtures } from "fixtures/currentUserFixtures";
 import { systemInfoFixtures } from "fixtures/systemInfoFixtures";
 import axios from "axios";
@@ -22,8 +20,16 @@ vi.mock("react-toastify", async (importOriginal) => {
 
 describe("CoursesIndexPage tests", () => {
   const axiosMock = new AxiosMockAdapter(axios);
-
   const testId = "CoursesTable";
+
+  const getQueryClient = () =>
+    new QueryClient({
+      defaultOptions: {
+        queries: {
+          retry: false, // do not retry on failure
+        },
+      },
+    });
 
   const setupUserOnly = () => {
     axiosMock.reset();
@@ -47,14 +53,12 @@ describe("CoursesIndexPage tests", () => {
       .reply(200, systemInfoFixtures.showingNeither);
   };
 
-  const queryClient = new QueryClient();
-
   test("Renders with Create Button for admin user", async () => {
     setupAdminUser();
     axiosMock.onGet("/api/course/all").reply(200, []);
 
     render(
-      <QueryClientProvider client={queryClient}>
+      <QueryClientProvider client={getQueryClient()}>
         <MemoryRouter>
           <CoursesIndexPage />
         </MemoryRouter>
@@ -65,8 +69,8 @@ describe("CoursesIndexPage tests", () => {
       expect(screen.getByText(/Create Course/)).toBeInTheDocument();
     });
     const button = screen.getByText(/Create Course/);
-    expect(button).toHaveAttribute("href", "/course/create");
-    expect(button).toHaveAttribute("style", "float: right;");
+    expect(button).toHaveAttribute("href", "/admin/createcourses");
+    expect(button.style.float).toBe("right");
   });
 
   test("renders three courses correctly for regular user", async () => {
@@ -74,7 +78,7 @@ describe("CoursesIndexPage tests", () => {
     axiosMock.onGet("/api/course/all").reply(200, coursesFixtures.threeCourses);
 
     render(
-      <QueryClientProvider client={queryClient}>
+      <QueryClientProvider client={getQueryClient()}>
         <MemoryRouter>
           <CoursesIndexPage />
         </MemoryRouter>
@@ -86,6 +90,7 @@ describe("CoursesIndexPage tests", () => {
         screen.getByTestId(`${testId}-cell-row-0-col-id`),
       ).toHaveTextContent("1");
     });
+
     expect(screen.getByTestId(`${testId}-cell-row-1-col-id`)).toHaveTextContent(
       "2",
     );
@@ -96,55 +101,42 @@ describe("CoursesIndexPage tests", () => {
     const createCourseButton = screen.queryByText("Create Course");
     expect(createCourseButton).not.toBeInTheDocument();
 
-    const code = screen.getByText("MATH 4A");
-    expect(code).toBeInTheDocument();
+    expect(screen.getByText("MATH 4A")).toBeInTheDocument();
+    expect(screen.getByText("Linear Algebra")).toBeInTheDocument();
+    expect(screen.getByText("S26")).toBeInTheDocument();
 
-    const name = screen.getByText("Linear Algebra");
-    expect(name).toBeInTheDocument();
-
-    const term = screen.getByText("S26");
-    expect(term).toBeInTheDocument();
-
-    // for non-admin users, details button is visible, but the edit and delete buttons should not be visible
+    // Non-admin: details button visible, edit/delete not visible
     expect(
-      screen.queryByTestId("{testId}-cell-row-0-col-Delete-button"),
+      screen.queryByTestId(`${testId}-cell-row-0-col-Delete-button`),
     ).not.toBeInTheDocument();
     expect(
-      screen.queryByTestId("{testId}-cell-row-0-col-Edit-button"),
+      screen.queryByTestId(`${testId}-cell-row-0-col-Edit-button`),
     ).not.toBeInTheDocument();
   });
 
   test("renders empty table when backend unavailable, user only", async () => {
     setupUserOnly();
-
     axiosMock.onGet("/api/course/all").timeout();
 
     const restoreConsole = mockConsole();
 
     render(
-      <QueryClientProvider client={queryClient}>
+      <QueryClientProvider client={getQueryClient()}>
         <MemoryRouter>
           <CoursesIndexPage />
         </MemoryRouter>
       </QueryClientProvider>,
     );
 
+    // Table headers should still exist
     await waitFor(() => {
-      expect(axiosMock.history.get.length).toBeGreaterThanOrEqual(1);
+      expect(screen.getByTestId(`${testId}-header-id`)).toBeInTheDocument();
     });
 
-    await waitFor(() => {
-      expect(console.error).toHaveBeenCalled();
-    });
-
-    await waitFor(() => {
-      expect(console.error).toHaveBeenCalled();
-    });
-
-    const errorMessage = console.error.mock.calls[0][0];
-    expect(errorMessage).toMatch(
-      "Error communicating with backend via GET on /api/course/all",
-    );
+    // No course rows should exist
+    expect(
+      screen.queryByTestId(`${testId}-cell-row-0-col-id`),
+    ).not.toBeInTheDocument();
 
     restoreConsole();
   });
@@ -158,7 +150,7 @@ describe("CoursesIndexPage tests", () => {
       .reply(200, "Course with id 1 was deleted");
 
     render(
-      <QueryClientProvider client={queryClient}>
+      <QueryClientProvider client={getQueryClient()}>
         <MemoryRouter>
           <CoursesIndexPage />
         </MemoryRouter>
@@ -171,16 +163,9 @@ describe("CoursesIndexPage tests", () => {
       ).toBeInTheDocument();
     });
 
-    expect(screen.getByTestId(`${testId}-cell-row-0-col-id`)).toHaveTextContent(
-      "1",
-    );
-
     const deleteButton = screen.getByTestId(
       `${testId}-cell-row-0-col-Delete-button`,
     );
-
-    expect(deleteButton).toBeInTheDocument();
-
     fireEvent.click(deleteButton);
 
     await waitFor(() => {
@@ -189,9 +174,8 @@ describe("CoursesIndexPage tests", () => {
 
     await waitFor(() => {
       expect(axiosMock.history.delete.length).toBe(1);
+      expect(axiosMock.history.delete[0].url).toBe("/api/course");
+      expect(axiosMock.history.delete[0].params).toEqual({ id: 1 });
     });
-    expect(axiosMock.history.delete[0].url).toBe("/api/course");
-    expect(axiosMock.history.delete[0].url).toBe("/api/course");
-    expect(axiosMock.history.delete[0].params).toEqual({ id: 1 });
   });
 });

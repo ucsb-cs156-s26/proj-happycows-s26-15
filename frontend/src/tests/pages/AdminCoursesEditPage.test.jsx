@@ -149,7 +149,7 @@ describe("CoursesEditPage tests", () => {
       await waitFor(() => expect(mockToast).toBeCalled());
       expect(mockToast).toBeCalledWith("Course Updated - id: 17 code: MATH 4B");
 
-      expect(mockNavigate).toBeCalledWith({ to: "/course" });
+      expect(mockNavigate).toBeCalledWith({ to: "/admin/editcourses/:id" });
 
       expect(axiosMock.history.put.length).toBe(1); // times called
       expect(axiosMock.history.put[0].params).toEqual({ id: 17 });
@@ -197,7 +197,7 @@ describe("CoursesEditPage tests", () => {
 
       await waitFor(() => expect(mockToast).toBeCalled());
       expect(mockToast).toBeCalledWith("Course Updated - id: 17 code: MATH 4B");
-      expect(mockNavigate).toBeCalledWith({ to: "/course" });
+      expect(mockNavigate).toBeCalledWith({ to: "/admin/editcourses/:id" });
     });
   });
 });

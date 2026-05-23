@@ -7,8 +7,7 @@ import { useCurrentUser, hasRole } from "main/utils/currentUser";
 import { Button } from "react-bootstrap";
 
 export default function CoursesIndexPage() {
-  const currentUser = useCurrentUser();
-
+  const { data: currentUser } = useCurrentUser();
   const {
     data: courses,
     error: _error,
@@ -26,7 +25,7 @@ export default function CoursesIndexPage() {
       return (
         <Button
           variant="primary"
-          href="/course/create"
+          href="/admin/createcourses"
           style={{ float: "right" }}
         >
           Create Course
