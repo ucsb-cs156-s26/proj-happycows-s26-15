@@ -148,7 +148,7 @@ import edu.ucsb.cs156.happiercows.services.CommonsPlusBuilderService;
     @PreAuthorize(&quot;hasRole('ROLE_ADMIN')&quot;)
     @PostMapping(&quot;/launch/updatecowhealthsinglecommons&quot;)
     public Job updateCowHealth(
-         @Parameter(name=&quot;commonsId&quot;) @RequestParam Long commonsId
+        @Parameter(name=&quot;commonsId&quot;) @RequestParam Long commonsId
     ) { 
 <span class="fc" id="L153">        JobContextConsumer updateCowHealthJobInd = updateCowHealthJobFactoryInd.create(commonsId);</span>
 <span class="fc" id="L154">        return jobService.runAsJob(updateCowHealthJobInd);</span>
