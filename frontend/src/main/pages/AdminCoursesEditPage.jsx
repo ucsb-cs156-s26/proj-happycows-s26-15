@@ -18,19 +18,14 @@ export default function CoursesEditPage({ storybook = false }) {
     {
       // Stryker disable next-line all : GET is the default, so mutating this to "" doesn't introduce a bug
       method: "GET",
-      url: `/api/course/{id}`,
-      params: {
-        id,
-      },
+      url: `/api/course/${id}`,
     },
   );
 
+
   const objectToAxiosPutParams = (course) => ({
-    url: "/api/course/{id}",
+    url: `/api/course/${course.id}`,
     method: "PUT",
-    params: {
-      id: course.id,
-    },
     data: {
       code: course.code,
       name: course.name,
@@ -56,7 +51,7 @@ export default function CoursesEditPage({ storybook = false }) {
   };
 
   if (isSuccess && !storybook) {
-    return <Navigate to="/admin/editcourses/:id" />;
+    return <Navigate to="/admin/listcourses" />;
   }
 
   return (

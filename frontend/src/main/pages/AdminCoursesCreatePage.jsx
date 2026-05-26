@@ -33,7 +33,7 @@ export default function CoursesCreatePage({ storybook = false }) {
   };
 
   if (isSuccess && !storybook) {
-    return <Navigate to="/admin/createcourses" />;
+    return <Navigate to="/admin/listcourses" />;
   }
 
   return (
