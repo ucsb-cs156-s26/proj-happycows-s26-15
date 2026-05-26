@@ -18,7 +18,7 @@ export default function CoursesEditPage({ storybook = false }) {
     {
       // Stryker disable next-line all : GET is the default, so mutating this to "" doesn't introduce a bug
       method: "GET",
-      url: `/api/course`,
+      url: `/api/course/{id}`,
       params: {
         id,
       },
@@ -26,7 +26,7 @@ export default function CoursesEditPage({ storybook = false }) {
   );
 
   const objectToAxiosPutParams = (course) => ({
-    url: "/api/course",
+    url: "/api/course/{id}",
     method: "PUT",
     params: {
       id: course.id,

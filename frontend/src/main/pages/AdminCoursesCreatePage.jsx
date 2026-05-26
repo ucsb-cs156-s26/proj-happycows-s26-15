@@ -6,7 +6,7 @@ import { toast } from "react-toastify";
 
 export default function CoursesCreatePage({ storybook = false }) {
   const objectToAxiosParams = (course) => ({
-    url: "/api/course/post",
+    url: "/api/course",
     method: "POST",
     params: {
       code: course.code,
