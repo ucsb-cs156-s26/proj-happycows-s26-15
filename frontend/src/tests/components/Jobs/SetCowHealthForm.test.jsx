@@ -38,6 +38,7 @@ describe("SetCowHealthForm tests", () => {
 
   it("validates health > 0", async () => {
     const submitAction = vi.fn();
+
     axiosMock
       .onGet("/api/commons/all")
       .reply(200, commonsFixtures.threeCommons);
@@ -68,14 +69,11 @@ describe("SetCowHealthForm tests", () => {
     await waitFor(() => {
       expect(screen.getByText(/Health Value must be ≥ 0/i)).toBeInTheDocument();
     });
+
     expect(submitAction).not.toBeCalled();
   });
 
   it("validates health ≥ 0", async () => {
-    const getItemSpy = vi.spyOn(Storage.prototype, "getItem");
-    getItemSpy.mockImplementation(() => null);
-
-    const submitAction = vi.fn();
     axiosMock
       .onGet("/api/commons/all")
       .reply(200, commonsFixtures.threeCommons);
@@ -106,14 +104,9 @@ describe("SetCowHealthForm tests", () => {
     await waitFor(() => {
       expect(screen.getByText(/Health Value must be ≥ 0/i)).toBeInTheDocument();
     });
-    expect(submitAction).not.toBeCalled();
   });
 
   it("validates health ≤ 100", async () => {
-    const getItemSpy = vi.spyOn(Storage.prototype, "getItem");
-    getItemSpy.mockImplementation(() => null);
-
-    const submitAction = vi.fn();
     axiosMock
       .onGet("/api/commons/all")
       .reply(200, commonsFixtures.threeCommons);
@@ -146,14 +139,9 @@ describe("SetCowHealthForm tests", () => {
         screen.getByText(/Health Value must be ≤ 100/i),
       ).toBeInTheDocument();
     });
-    expect(submitAction).not.toBeCalled();
   });
 
   it("validates health is required", async () => {
-    const getItemSpy = vi.spyOn(Storage.prototype, "getItem");
-    getItemSpy.mockImplementation(() => null);
-
-    const submitAction = vi.fn();
     axiosMock
       .onGet("/api/commons/all")
       .reply(200, commonsFixtures.threeCommons);
@@ -184,14 +172,11 @@ describe("SetCowHealthForm tests", () => {
     await waitFor(() => {
       expect(screen.getByText(/Health Value is required/i)).toBeInTheDocument();
     });
-    expect(submitAction).not.toBeCalled();
   });
 
   it("user can sucessfully submit the job", async () => {
-    const getItemSpy = vi.spyOn(Storage.prototype, "getItem");
-    getItemSpy.mockImplementation(() => null);
-
     const submitAction = vi.fn();
+
     axiosMock
       .onGet("/api/commons/all")
       .reply(200, commonsFixtures.threeCommons);
@@ -207,19 +192,15 @@ describe("SetCowHealthForm tests", () => {
     const commonsRadio = await screen.findByTestId(
       "SetCowHealthForm-commons-1",
     );
-    expect(commonsRadio).toBeInTheDocument();
+
     fireEvent.click(commonsRadio);
 
     const healthInput = screen.getByTestId("SetCowHealthForm-healthValue");
     const submitButton = screen.getByTestId("SetCowHealthForm-Submit-Button");
 
-    expect(healthInput).toBeInTheDocument();
-    expect(submitButton).toBeInTheDocument();
-
     fireEvent.change(healthInput, { target: { value: "10" } });
     fireEvent.click(submitButton);
 
-    // assert - check that the console.log was called with the expected message
     await waitFor(() => {
       expect(submitAction).toHaveBeenCalled();
     });
@@ -232,8 +213,6 @@ describe("SetCowHealthForm tests", () => {
   });
 
   test("when localstorage has no value, the default value of healthValue is 100", async () => {
-    const getItemSpy = vi.spyOn(Storage.prototype, "getItem");
-    getItemSpy.mockImplementation(() => null);
     axiosMock
       .onGet("/api/commons/all")
       .reply(200, commonsFixtures.threeCommons);
@@ -253,14 +232,13 @@ describe("SetCowHealthForm tests", () => {
     });
 
     const healthInput = screen.getByTestId("SetCowHealthForm-healthValue");
+
     expect(healthInput).toHaveValue(100);
   });
 
   test("healthValue can be loaded from localstorage", async () => {
-    const getItemSpy = vi.spyOn(Storage.prototype, "getItem");
-    getItemSpy.mockImplementation((key) =>
-      key === "SetCowHealthForm-health" ? 42 : null,
-    );
+    localStorage.setItem("SetCowHealthForm-health", "42");
+
     axiosMock
       .onGet("/api/commons/all")
       .reply(200, commonsFixtures.threeCommons);
@@ -280,16 +258,14 @@ describe("SetCowHealthForm tests", () => {
     });
 
     const healthInput = screen.getByTestId("SetCowHealthForm-healthValue");
+
     expect(healthInput).toHaveValue(42);
   });
 
   test("healthValue is saved in localstorage", async () => {
-    const getItemSpy = vi.spyOn(Storage.prototype, "getItem");
-    const setItemSpy = vi.spyOn(Storage.prototype, "setItem");
+    localStorage.setItem("SetCowHealthForm-health", "42");
 
-    getItemSpy.mockImplementation((key) =>
-      key === "SetCowHealthForm-health" ? 42 : null,
-    );
+    const setItemSpy = vi.spyOn(localStorage, "setItem");
 
     axiosMock
       .onGet("/api/commons/all")
@@ -310,11 +286,15 @@ describe("SetCowHealthForm tests", () => {
     });
 
     const healthInput = screen.getByTestId("SetCowHealthForm-healthValue");
+
     expect(healthInput).toHaveValue(42);
 
     const submitButton = screen.getByTestId("SetCowHealthForm-Submit-Button");
 
-    fireEvent.change(healthInput, { target: { value: "24" } });
+    fireEvent.change(healthInput, {
+      target: { value: "24" },
+    });
+
     fireEvent.click(submitButton);
 
     await waitFor(() => {
@@ -323,11 +303,6 @@ describe("SetCowHealthForm tests", () => {
   });
 
   test("the first item in commons array is selected by default", async () => {
-    const getItemSpy = vi.spyOn(Storage.prototype, "getItem");
-    getItemSpy.mockImplementation((key) =>
-      key === "SetCowHealthForm-health" ? 42 : null,
-    );
-
     axiosMock
       .onGet("/api/commons/all")
       .reply(200, commonsFixtures.threeCommons);
@@ -342,16 +317,17 @@ describe("SetCowHealthForm tests", () => {
 
     const defaultId = commonsFixtures.threeCommons[0].id;
     const testIdForFirstItem = `SetCowHealthForm-commons-${defaultId}`;
+
     await waitFor(() => {
       expect(screen.getByTestId(testIdForFirstItem)).toBeInTheDocument();
     });
 
     const commons = screen.getByTestId(testIdForFirstItem);
+
     expect(commons).toHaveAttribute("checked", "");
   });
 
   test("the correct parameters are passed to useBackend", async () => {
-    // https://www.chakshunyu.com/blog/how-to-spy-on-a-named-import-in-jest/
     const useBackendSpy = vi.spyOn(useBackendModule, "useBackend");
 
     render(

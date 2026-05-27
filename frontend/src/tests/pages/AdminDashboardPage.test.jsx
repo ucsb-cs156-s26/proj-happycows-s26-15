@@ -1,9 +1,8 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "react-query";
 import { MemoryRouter } from "react-router";
-import AxiosMockAdapter from "axios-mock-adapter";
-import axios from "axios";
 import AdminDashboardPage from "main/pages/AdminDashboardPage";
+import * as useBackendModule from "main/utils/useBackend";
 import { vi } from "vitest";
 
 vi.mock("react-router", async () => ({
@@ -14,35 +13,22 @@ vi.mock("react-router", async () => ({
 }));
 
 describe("AdminDashboardPage tests", () => {
-  const axiosMock = new AxiosMockAdapter(axios);
-
   beforeEach(() => {
-    axiosMock.reset();
-
-    axiosMock.onGet("/api/commonstats/commons").reply(200, [
-      {
-        id: 1,
-        numCows: 12,
-        avgHealth: 95,
-      },
-    ]);
-
-    axiosMock.onGet("/api/dashboard/histogram/1").reply(200, [
-      {
-        username: "farmer1",
-        numOfCows: 12,
-      },
-    ]);
+    vi.clearAllMocks();
   });
 
-  test("renders dashboard and loads api data", async () => {
-    const testQueryClient = new QueryClient({
-      defaultOptions: {
-        queries: {
-          retry: false,
-        },
-      },
-    });
+  test("renders dashboard and calls backend with correct endpoints", () => {
+    const useBackendSpy = vi.spyOn(useBackendModule, "useBackend");
+
+    useBackendSpy
+      .mockReturnValueOnce({
+        data: [{ id: 1, numCows: 12, avgHealth: 95 }],
+      })
+      .mockReturnValueOnce({
+        data: [{ username: "farmer1", numOfCows: 12 }],
+      });
+
+    const testQueryClient = new QueryClient();
 
     render(
       <QueryClientProvider client={testQueryClient}>
@@ -52,29 +38,32 @@ describe("AdminDashboardPage tests", () => {
       </QueryClientProvider>,
     );
 
-    await waitFor(() => {
-      expect(screen.getByText("Cow Ownership Histogram")).toBeInTheDocument();
-    });
-
+    expect(screen.getByText("Dashboard")).toBeInTheDocument();
+    expect(screen.getByText("Cow Ownership Histogram")).toBeInTheDocument();
     expect(screen.getByText("Cows Over Time")).toBeInTheDocument();
-
     expect(screen.getByText("Average Health Over Time")).toBeInTheDocument();
 
-    await waitFor(() => {
-      expect(axiosMock.history.get.length).toBeGreaterThan(0);
-    });
+    expect(useBackendSpy).toHaveBeenCalledWith(
+      ["/api/commonstats/commons?commonsId=1"],
+      {
+        method: "GET",
+        url: "/api/commonstats/commons",
+        params: {
+          commonsId: 1,
+        },
+      },
+      [],
+    );
 
-    expect(
-      axiosMock.history.get.some(
-        (req) =>
-          req.url === "/api/commonstats/commons" && req.params.commonsId === 1,
-      ),
-    ).toBe(true);
+    expect(useBackendSpy).toHaveBeenCalledWith(
+      ["/api/dashboard/histogram/1"],
+      {
+        method: "GET",
+        url: "/api/dashboard/histogram/1",
+      },
+      [],
+    );
 
-    expect(
-      axiosMock.history.get.some(
-        (req) => req.url === "/api/dashboard/histogram/1",
-      ),
-    ).toBe(true);
+    useBackendSpy.mockRestore();
   });
 });

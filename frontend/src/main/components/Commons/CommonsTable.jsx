@@ -102,26 +102,11 @@ export default function CommonsTable({ commons, currentUser }) {
       testid,
     ),
 
-    HrefButtonColumn(
-      "Announcements",
-      "info",
-      `/admin/announcements/`,
-      testid,
-    ),
+    HrefButtonColumn("Announcements", "info", `/admin/announcements/`, testid),
 
-    HrefButtonColumn(
-      "Chat",
-      "primary",
-      `/admin/chat/`,
-      testid,
-    ),
+    HrefButtonColumn("Chat", "primary", `/admin/chat/`, testid),
 
-    HrefButtonColumn(
-      "Dashboard",
-      "info",
-      `/admin/dashboard/`,
-      testid,
-    ),
+    HrefButtonColumn("Dashboard", "info", `/admin/dashboard/`, testid),
   ];
 
   const columnsToDisplay = hasRole(currentUser, "ROLE_ADMIN")
@@ -161,11 +146,7 @@ export default function CommonsTable({ commons, currentUser }) {
     <>
       {commonsModal}
 
-      <OurTable
-        data={commons}
-        columns={columnsToDisplay}
-        testid={testid}
-      />
+      <OurTable data={commons} columns={columnsToDisplay} testid={testid} />
     </>
   );
 }

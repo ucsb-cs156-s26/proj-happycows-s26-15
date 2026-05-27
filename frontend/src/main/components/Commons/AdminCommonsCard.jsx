@@ -49,10 +49,7 @@ export default function AdminCommonsCard({ commons, currentUser }) {
   };
 
   const deleteModal = (
-    <Modal
-      show={showDeleteModal}
-      onHide={() => setShowDeleteModal(false)}
-    >
+    <Modal show={showDeleteModal} onHide={() => setShowDeleteModal(false)}>
       <Modal.Header closeButton>
         <Modal.Title>Delete Commons</Modal.Title>
       </Modal.Header>
@@ -62,10 +59,7 @@ export default function AdminCommonsCard({ commons, currentUser }) {
       </Modal.Body>
 
       <Modal.Footer>
-        <Button
-          variant="secondary"
-          onClick={() => setShowDeleteModal(false)}
-        >
+        <Button variant="secondary" onClick={() => setShowDeleteModal(false)}>
           Cancel
         </Button>
 
