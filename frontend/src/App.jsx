@@ -10,6 +10,7 @@ import LeaderboardPage from "main/pages/LeaderboardPage";
 import "bootstrap/dist/css/bootstrap.css";
 import "react-toastify/dist/ReactToastify.css";
 
+import AdminDashboardPage from "main/pages/AdminDashboardPage";
 import AdminUsersPage from "main/pages/AdminUsersPage";
 import AdminJobsPage from "main/pages/AdminJobsPage";
 import AdminCreateCommonsPage from "main/pages/AdminCreateCommonsPage";
@@ -49,6 +50,7 @@ function App() {
       <Route path="/admin/listcommonsv2" element={<AdminListCommonsPageV2 />} />
       <Route path="/admin/editcommons/:id" element={<AdminEditCommonsPage />} />
       <Route path="/admin/liststudents" element={<AdminStudentsIndexPage />} />
+      <Route path="/admin/dashboard/:id" element={<AdminDashboardPage />} />
       <Route
         path="/admin/createstudents"
         element={<AdminStudentsCreatePage />}

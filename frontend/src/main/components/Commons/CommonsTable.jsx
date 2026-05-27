@@ -1,15 +1,19 @@
 import React, { useState } from "react";
 import Button from "react-bootstrap/Button";
 import Modal from "react-bootstrap/Modal";
+
 import OurTable, {
   ButtonColumn,
   HrefButtonColumn,
 } from "main/components/OurTable";
+
 import { useBackendMutation } from "main/utils/useBackend";
+
 import {
   cellToAxiosParamsDelete,
   onDeleteSuccess,
 } from "main/utils/commonsUtils";
+
 import { useNavigate } from "react-router";
 import { hasRole } from "main/utils/currentUser";
 
@@ -25,139 +29,60 @@ export default function CommonsTable({ commons, currentUser }) {
 
   const deleteMutation = useBackendMutation(
     cellToAxiosParamsDelete,
-    { onSuccess: onDeleteSuccess },
-    ["/api/commons/allplus"],
+    {
+      onSuccess: onDeleteSuccess,
+    },
+    ["/api/commons/all"],
   );
 
-  const deleteCallback = async (cell) => {
+  const deleteCallback = (cell) => {
     setCellToDelete(cell);
     setShowModal(true);
   };
 
-  const confirmDelete = async (cell) => {
-    deleteMutation.mutate(cell);
-    setShowModal(false);
-  };
-
   const leaderboardCallback = (cell) => {
-    const route = `/leaderboard/${cell.row.values["commons.id"]}`;
-    navigate(route);
+    navigate(`/leaderboard/${cell.row.values["commons.id"]}`);
   };
 
   const columns = [
     {
       Header: "id",
-      accessor: "commons.id", // accessor is the "key" in the data
+      accessor: "id",
     },
     {
       Header: "Name",
-      accessor: "commons.name",
+      accessor: "name",
     },
     {
-      Header: (
-        <span>
-          Cow
-          <br /> Price
-        </span>
-      ),
-      accessor: (row) => row.commons.cowPrice,
-      id: "commons.cowPrice",
+      Header: "Short Description",
+      accessor: "shortDescription",
     },
     {
-      Header: (
-        <span>
-          Milk <br /> Price
-        </span>
-      ),
-      accessor: (row) => row.commons.milkPrice,
-      id: "commons.milkPrice",
+      Header: "Price Per Cow",
+      accessor: "pricePerCow",
     },
     {
-      Header: (
-        <span>
-          Start <br /> Bal
-        </span>
-      ),
-      accessor: (row) => row.commons.startingBalance,
-      id: "commons.startingBalance",
+      Header: "Milk Price",
+      accessor: "milkPrice",
     },
     {
-      Header: (
-        <span>
-          Starting <br /> Date
-        </span>
-      ),
-      accessor: (row) => String(row.commons.startingDate).slice(0, 10),
-      id: "commons.startingDate",
+      Header: "Starting Balance",
+      accessor: "startingBalance",
     },
     {
-      Header: (
-        <span>
-          Last <br /> Date
-        </span>
-      ),
-      accessor: (row) => String(row.commons.lastDate).slice(0, 10),
-      id: "commons.lastDate",
+      Header: "Starting Date",
+      accessor: "startingDate",
     },
     {
-      Header: (
-        <span>
-          Degrad <br /> Rate
-        </span>
-      ),
-      accessor: (row) => row.commons.degradationRate,
-      id: "commons.degradationRate",
+      Header: "Full Capacity",
+      accessor: "fullCapacity",
     },
     {
-      Header: (
-        <span>
-          Show <br /> LrdrBrd?
-        </span>
-      ),
-      id: "commons.showLeaderboard", // needed for tests
-      accessor: (row, _rowIndex) => String(row.commons.showLeaderboard), // hack needed for boolean values to show up
+      Header: "Below Capacity Health Multiplier",
+      accessor: "belowCapacityHealthMultiplier",
     },
     {
-      Header: (
-        <span>
-          Show <br /> Chat?
-        </span>
-      ),
-      id: "commons.showChat",
-      accessor: (row, _rowIndex) => String(row.commons.showChat),
-    },
-    {
-      Header: (
-        <span>
-          Tot <br /> Cows
-        </span>
-      ),
-      accessor: "totalCows",
-    },
-    {
-      Header: (
-        <span>
-          Cap / <br /> User
-        </span>
-      ),
-      accessor: (row) => row.commons.capacityPerUser,
-      id: "commons.capacityPerUser",
-    },
-    {
-      Header: (
-        <span>
-          Carry <br /> Cap
-        </span>
-      ),
-      accessor: (row) => row.commons.carryingCapacity,
-      id: "commons.carryingCapacity",
-    },
-    {
-      Header: (
-        <span>
-          Eff <br /> Cap
-        </span>
-      ),
+      Header: "Effective Capacity",
       accessor: "effectiveCapacity",
     },
   ];
@@ -169,14 +94,34 @@ export default function CommonsTable({ commons, currentUser }) {
     ButtonColumn("Edit", "primary", editCallback, testid),
     ButtonColumn("Delete", "danger", deleteCallback, testid),
     ButtonColumn("Leaderboard", "secondary", leaderboardCallback, testid),
+
     HrefButtonColumn(
       "Stats CSV",
       "success",
       `/api/commonstats/download?commonsId=`,
       testid,
     ),
-    HrefButtonColumn("Announcements", "info", `/admin/announcements/`, testid),
-    HrefButtonColumn("Chat", "primary", `/admin/chat/`, testid),
+
+    HrefButtonColumn(
+      "Announcements",
+      "info",
+      `/admin/announcements/`,
+      testid,
+    ),
+
+    HrefButtonColumn(
+      "Chat",
+      "primary",
+      `/admin/chat/`,
+      testid,
+    ),
+
+    HrefButtonColumn(
+      "Dashboard",
+      "info",
+      `/admin/dashboard/`,
+      testid,
+    ),
   ];
 
   const columnsToDisplay = hasRole(currentUser, "ROLE_ADMIN")
@@ -184,29 +129,29 @@ export default function CommonsTable({ commons, currentUser }) {
     : columns;
 
   const commonsModal = (
-    <Modal
-      data-testid="CommonsTable-Modal"
-      show={showModal}
-      onHide={() => setShowModal(false)}
-    >
+    <Modal show={showModal} onHide={() => setShowModal(false)}>
       <Modal.Header closeButton>
-        <Modal.Title>Confirm Deletion</Modal.Title>
+        <Modal.Title>Delete Commons</Modal.Title>
       </Modal.Header>
-      <Modal.Body>Are you sure you want to delete this commons?</Modal.Body>
+
+      <Modal.Body>
+        Are you sure you want to delete the commons{" "}
+        {cellToDelete?.row.values["commons.name"]}?
+      </Modal.Body>
+
       <Modal.Footer>
-        <Button
-          variant="secondary"
-          data-testid="CommonsTable-Modal-Cancel"
-          onClick={() => setShowModal(false)}
-        >
+        <Button variant="secondary" onClick={() => setShowModal(false)}>
           Keep this Commons
         </Button>
+
         <Button
           variant="danger"
-          data-testid="CommonsTable-Modal-Delete"
-          onClick={() => confirmDelete(cellToDelete)}
+          onClick={() => {
+            deleteMutation.mutate(cellToDelete);
+            setShowModal(false);
+          }}
         >
-          Permanently Delete
+          Delete
         </Button>
       </Modal.Footer>
     </Modal>
@@ -214,8 +159,13 @@ export default function CommonsTable({ commons, currentUser }) {
 
   return (
     <>
-      <OurTable data={commons} columns={columnsToDisplay} testid={testid} />
-      {hasRole(currentUser, "ROLE_ADMIN") && commonsModal}
+      {commonsModal}
+
+      <OurTable
+        data={commons}
+        columns={columnsToDisplay}
+        testid={testid}
+      />
     </>
   );
 }
