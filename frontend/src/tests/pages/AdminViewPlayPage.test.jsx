@@ -17,6 +17,7 @@ vi.mock("react-router", async () => ({
 }));
 
 const mockToast = vi.fn();
+
 vi.mock("react-toastify", async () => {
   const originalModule = await vi.importActual("react-toastify");
   return {
@@ -37,23 +38,29 @@ describe("AdminViewPlayPage tests", () => {
       totalWealth: 0,
       userId: 1,
     };
+
     axiosMock.reset();
     axiosMock.resetHistory();
+
     axiosMock
       .onGet("/api/currentUser")
       .reply(200, apiCurrentUserFixtures.userOnly);
+
     axiosMock
       .onGet("/api/systemInfo")
       .reply(200, systemInfoFixtures.showingNeither);
+
     axiosMock
       .onGet("/api/usercommons", {
         params: { userId: 1, commonsId: 1 },
       })
       .reply(200, userCommons);
+
     axiosMock.onGet("/api/commons", { params: { id: 1 } }).reply(200, {
       id: 1,
       name: "Sample Commons",
     });
+
     axiosMock.onGet("/api/commons/all").reply(200, [
       {
         id: 1,
@@ -69,6 +76,7 @@ describe("AdminViewPlayPage tests", () => {
       totalPlayers: 5,
       totalCows: 5,
     });
+
     axiosMock
       .onGet("/api/profits/all", {
         params: {
@@ -77,6 +85,7 @@ describe("AdminViewPlayPage tests", () => {
         },
       })
       .reply(200, []);
+
     axiosMock.onPut("/api/usercommons/sell").reply(200, userCommons);
     axiosMock.onPut("/api/usercommons/buy").reply(200, userCommons);
   });
@@ -119,27 +128,21 @@ describe("AdminViewPlayPage tests", () => {
       ).toBeInTheDocument();
     });
 
-    // Make sure the chat toggle button is visible
     const chatToggleButton = screen.getByTestId(
       "adminviewplaypage-chat-toggle",
     );
-    expect(chatToggleButton).toBeInTheDocument();
 
-    // Make sure the ChatPanel is not visible initially
+    expect(chatToggleButton).toBeInTheDocument();
     expect(screen.queryByTestId("ChatPanel")).not.toBeInTheDocument();
 
-    // Click the chat toggle button to open the ChatPanel
     fireEvent.click(chatToggleButton);
 
-    // Wait for the ChatPanel to become visible
     await waitFor(() => {
       expect(screen.getByTestId("ChatPanel")).toBeInTheDocument();
     });
 
-    // Click the chat toggle button again to close the ChatPanel
     fireEvent.click(chatToggleButton);
 
-    // Wait for the ChatPanel to become hidden
     await waitFor(() => {
       expect(screen.queryByTestId("ChatPanel")).not.toBeInTheDocument();
     });
@@ -165,33 +168,35 @@ describe("AdminViewPlayPage tests", () => {
 
     expect(chatButton).toHaveTextContent("▲");
 
-    // Click the chat toggle button to open the ChatPanel
+    expect(chatButton.style.color).toBe("black");
+
     fireEvent.click(chatButton);
 
     await waitFor(() => {
       expect(chatButton).toHaveTextContent("▼");
     });
 
-    // Check styles for the chat button
     expect(chatButton).toHaveStyle(`
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
-            background-color: rgb(173, 216, 230);
-            color: rgb(0, 0, 0);
-            position: fixed;
-            bottom: 20px;
-            right: 20px;
-        `);
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background-color: rgb(173, 216, 230);
+      color: rgb(0, 0, 0);
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+    `);
 
-    // Check styles for the chat container
+    expect(chatButton.style.color).toBe("black");
+
     expect(chatContainer).toHaveStyle(`
-            width: 550px;
-            position: fixed;
-            bottom: 100px;
-            right: 20px;
-        `);
+      width: 550px;
+      position: fixed;
+      bottom: 100px;
+      right: 20px;
+    `);
   });
+
   test("displays read-only banner", async () => {
     render(
       <QueryClientProvider client={queryClient}>
@@ -204,6 +209,7 @@ describe("AdminViewPlayPage tests", () => {
     expect(
       await screen.findByText(/This is a Admin Feature for/),
     ).toBeInTheDocument();
+
     expect(await screen.findByText(/Visiting Farmer/)).toBeInTheDocument();
     expect(await screen.findByText(/Play Page for common/)).toBeInTheDocument();
 
@@ -211,20 +217,18 @@ describe("AdminViewPlayPage tests", () => {
       "adminviewplaypage-read-only-banner",
     );
 
-    expect(bannerElement).toHaveStyle(
-      `
-            background: rgb(240, 240, 240);
-            padding: 10px;
-            textAlign: center
-            `,
-    );
+    expect(bannerElement).toHaveStyle(`
+      background: rgb(240, 240, 240);
+      padding: 10px;
+      text-align: center;
+    `);
+
     expect(bannerElement).toHaveTextContent(
       "This is a Admin Feature for Phillip ConradVisiting Farmer 's Play Page for common Sample Commons in Read Only Mode.",
     );
   });
 
   test("renders when userCommons is falsy but commonsPlus is truthy", async () => {
-    // Mock the response so that userCommons is falsy but commonsPlus is truthy
     axiosMock
       .onGet("/api/usercommons", {
         params: { userId: 1, commonsId: 1 },
@@ -239,13 +243,14 @@ describe("AdminViewPlayPage tests", () => {
       </QueryClientProvider>,
     );
 
-    // Ensure that the component renders without crashing
     expect(
       await screen.findByText(/This is a Admin Feature for/),
     ).toBeInTheDocument();
+
     expect(await screen.findByText(/Visiting Farmer/)).toBeInTheDocument();
     expect(await screen.findByText(/Play Page for common/)).toBeInTheDocument();
   });
+
   test("renders when userCommons is truthy and commonsPlus is falsy", async () => {
     axiosMock
       .onGet("/api/commons/plus", { params: { id: 1 } })
@@ -259,13 +264,14 @@ describe("AdminViewPlayPage tests", () => {
       </QueryClientProvider>,
     );
 
-    // Ensure that the component renders without crashing
     expect(
       await screen.findByText(/This is a Admin Feature for/),
     ).toBeInTheDocument();
+
     expect(await screen.findByText(/Visiting Farmer/)).toBeInTheDocument();
     expect(await screen.findByText(/Play Page for common/)).toBeInTheDocument();
   });
+
   test("renders CardGroup when userCommons and commonsPlus are truthy", async () => {
     render(
       <QueryClientProvider client={queryClient}>
@@ -275,7 +281,6 @@ describe("AdminViewPlayPage tests", () => {
       </QueryClientProvider>,
     );
 
-    // Ensure that the component renders the CardGroup when conditions are met
     expect(
       await screen.findByTestId("adminviewplaypage-card-group"),
     ).toBeInTheDocument();

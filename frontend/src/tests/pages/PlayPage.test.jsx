@@ -276,6 +276,9 @@ describe("PlayPage tests", () => {
     const chatButton = screen.getByTestId("playpage-chat-toggle");
     const chatContainer = screen.getByTestId("playpage-chat-div");
 
+    expect(chatButton).toHaveStyle({
+      color: "rgb(0, 0, 0)",
+    });
     expect(chatButton).toHaveTextContent("💬");
     const messageIcon = screen.getByTestId("message-icon");
     expect(messageIcon).toHaveStyle("font-family: Arial, sans-serif;");

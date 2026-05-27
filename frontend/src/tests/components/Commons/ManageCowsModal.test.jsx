@@ -329,6 +329,10 @@ describe("ManageCowsModal", () => {
       />,
     );
 
+    expect(screen.getByTestId("buy-sell-cow-modal-close")).toHaveStyle({
+      color: "rgb(0, 0, 0)",
+    });
+
     expect(screen.getByTestId("buy-sell-cow-modal-footer")).toHaveStyle(
       "border-top-width: 0px",
     );
