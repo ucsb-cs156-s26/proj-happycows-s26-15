@@ -61,7 +61,7 @@ describe("utils/systemInfo tests", () => {
         wrapper,
       });
 
-      await waitFor(() => result.current.isFetched);
+      await waitFor(() => expect(result.current.isFetched).toBe(true));
 
       expect(result.current.data.springH2ConsoleEnabled).toBe(
         systemInfoFixtures.showingAll.springH2ConsoleEnabled,
@@ -98,7 +98,7 @@ describe("utils/systemInfo tests", () => {
         wrapper,
       });
 
-      await waitFor(() => result.current.isFetched);
+      await waitFor(() => expect(result.current.isFetched).toBe(true));
       expect(console.error).toHaveBeenCalled();
       const errorMessage = console.error.mock.calls[0][0];
       expect(errorMessage).toMatch(/Error invoking axios.get:/);
