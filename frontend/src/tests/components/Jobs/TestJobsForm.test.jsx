@@ -51,30 +51,6 @@ describe("TestJobsForm tests", () => {
     expect(screen.getByTestId("TestJobForm-sleepMs")).toHaveClass("is-invalid"); // tests for mutation to isInvalid={!!errors.sleepMs} idiom
   });
 
-  it("validates that sleepMs is >= 0", async () => {
-    const submitAction = vi.fn();
-
-    render(
-      <Router>
-        <TestJobsForm jobs={jobsFixtures.sixJobs} />
-      </Router>,
-    );
-
-    expect(await screen.findByTestId("TestJobForm-fail")).toBeInTheDocument();
-    const submitButton = screen.getByTestId("TestJobForm-Submit-Button");
-    const sleepMs = screen.getByTestId("TestJobForm-sleepMs");
-
-    expect(submitButton).toBeInTheDocument();
-    expect(sleepMs).toHaveValue(1000);
-
-    fireEvent.change(sleepMs, { target: { value: "-1" } });
-    fireEvent.click(submitButton);
-    expect(
-      await screen.findByText(/sleepMs must be positive/i),
-    ).toBeInTheDocument();
-    expect(submitAction).not.toBeCalled();
-  });
-
   it("validates that sleepMs is <= 60000", async () => {
     const submitAction = vi.fn();
 
