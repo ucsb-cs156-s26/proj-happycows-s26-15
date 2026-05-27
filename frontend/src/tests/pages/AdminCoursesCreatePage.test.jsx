@@ -69,8 +69,7 @@ describe("CoursesCreatePage tests", () => {
       term: "S26",
     };
 
-    axiosMock.onPost("/api/course/post").reply(202, course);
-
+    axiosMock.onPost("/api/course").reply(200, course);
     render(
       <QueryClientProvider client={queryClient}>
         <MemoryRouter>
@@ -114,6 +113,6 @@ describe("CoursesCreatePage tests", () => {
     expect(mockToast).toBeCalledWith(
       "New Course Created - id: 3 code: MATH 4A",
     );
-    expect(mockNavigate).toBeCalledWith({ to: "/admin/createcourses" });
+    expect(mockNavigate).toBeCalledWith({ to: "/admin/listcourses" });
   });
 });

@@ -46,7 +46,7 @@ describe("CoursesEditPage tests", () => {
       axiosMock
         .onGet("/api/systemInfo")
         .reply(200, systemInfoFixtures.showingNeither);
-      axiosMock.onGet("/api/course", { params: { id: 17 } }).timeout();
+      axiosMock.onGet("/api/course/17").timeout();
     });
 
     afterEach(() => {
@@ -84,13 +84,13 @@ describe("CoursesEditPage tests", () => {
       axiosMock
         .onGet("/api/systemInfo")
         .reply(200, systemInfoFixtures.showingNeither);
-      axiosMock.onGet("/api/course", { params: { id: 17 } }).reply(200, {
+      axiosMock.onGet("/api/course/17").reply(200, {
         id: 17,
         code: "MATH 4A",
         name: "Linear Algebra",
         term: "S26",
       });
-      axiosMock.onPut("/api/course").reply(200, {
+      axiosMock.onPut("/api/course/17").reply(200, {
         id: 17,
         code: "MATH 4B",
         name: "Differential Equations",
@@ -149,10 +149,10 @@ describe("CoursesEditPage tests", () => {
       await waitFor(() => expect(mockToast).toBeCalled());
       expect(mockToast).toBeCalledWith("Course Updated - id: 17 code: MATH 4B");
 
-      expect(mockNavigate).toBeCalledWith({ to: "/admin/editcourses/:id" });
+      expect(mockNavigate).toBeCalledWith({ to: "/admin/listcourses" });
 
       expect(axiosMock.history.put.length).toBe(1); // times called
-      expect(axiosMock.history.put[0].params).toEqual({ id: 17 });
+      expect(axiosMock.history.put[0].url).toBe("/api/course/17");
       expect(axiosMock.history.put[0].data).toBe(
         JSON.stringify({
           code: "MATH 4B",
@@ -197,7 +197,7 @@ describe("CoursesEditPage tests", () => {
 
       await waitFor(() => expect(mockToast).toBeCalled());
       expect(mockToast).toBeCalledWith("Course Updated - id: 17 code: MATH 4B");
-      expect(mockNavigate).toBeCalledWith({ to: "/admin/editcourses/:id" });
+      expect(mockNavigate).toBeCalledWith({ to: "/admin/listcourses" });
     });
   });
 });
