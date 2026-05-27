@@ -22,7 +22,6 @@ export default function CoursesEditPage({ storybook = false }) {
     },
   );
 
-
   const objectToAxiosPutParams = (course) => ({
     url: `/api/course/${course.id}`,
     method: "PUT",
