@@ -29,10 +29,8 @@ export default function CommonsTable({ commons, currentUser }) {
 
   const deleteMutation = useBackendMutation(
     cellToAxiosParamsDelete,
-    {
-      onSuccess: onDeleteSuccess,
-    },
-    ["/api/commons/all"],
+    { onSuccess: onDeleteSuccess },
+    ["/api/commons/allplus"],
   );
 
   const deleteCallback = (cell) => {
@@ -47,42 +45,110 @@ export default function CommonsTable({ commons, currentUser }) {
   const columns = [
     {
       Header: "id",
-      accessor: "id",
+      accessor: (row) => row.commons.id,
+      id: "commons.id",
     },
     {
       Header: "Name",
-      accessor: "name",
+      accessor: (row) => row.commons.name,
+      id: "commons.name",
     },
     {
-      Header: "Short Description",
-      accessor: "shortDescription",
-    },
-    {
-      Header: "Price Per Cow",
-      accessor: "pricePerCow",
+      Header: "Cow Price",
+      accessor: (row) => row.commons.cowPrice,
+      id: "commons.cowPrice",
     },
     {
       Header: "Milk Price",
-      accessor: "milkPrice",
+      accessor: (row) => row.commons.milkPrice,
+      id: "commons.milkPrice",
     },
     {
-      Header: "Starting Balance",
-      accessor: "startingBalance",
+      Header: (
+        <span>
+          Start <br /> Bal
+        </span>
+      ),
+      accessor: (row) => row.commons.startingBalance,
+      id: "commons.startingBalance",
     },
     {
-      Header: "Starting Date",
-      accessor: "startingDate",
+      Header: (
+        <span>
+          Starting <br /> Date
+        </span>
+      ),
+      accessor: (row) => String(row.commons.startingDate).slice(0, 10),
+      id: "commons.startingDate",
     },
     {
-      Header: "Full Capacity",
-      accessor: "fullCapacity",
+      Header: (
+        <span>
+          Last <br /> Date
+        </span>
+      ),
+      accessor: (row) => String(row.commons.lastDate).slice(0, 10),
+      id: "commons.lastDate",
     },
     {
-      Header: "Below Capacity Health Multiplier",
-      accessor: "belowCapacityHealthMultiplier",
+      Header: (
+        <span>
+          Degrad <br /> Rate
+        </span>
+      ),
+      accessor: (row) => row.commons.degradationRate,
+      id: "commons.degradationRate",
     },
     {
-      Header: "Effective Capacity",
+      Header: (
+        <span>
+          Show <br /> LrdrBrd?
+        </span>
+      ),
+      accessor: (row) => String(row.commons.showLeaderboard),
+      id: "commons.showLeaderboard",
+    },
+    {
+      Header: (
+        <span>
+          Show <br /> Chat?
+        </span>
+      ),
+      accessor: (row) => String(row.commons.showChat),
+      id: "commons.showChat",
+    },
+    {
+      Header: (
+        <span>
+          Tot <br /> Cows
+        </span>
+      ),
+      accessor: "totalCows",
+    },
+    {
+      Header: (
+        <span>
+          Cap / <br /> User
+        </span>
+      ),
+      accessor: (row) => row.commons.capacityPerUser,
+      id: "commons.capacityPerUser",
+    },
+    {
+      Header: (
+        <span>
+          Carry <br /> Cap
+        </span>
+      ),
+      accessor: (row) => row.commons.carryingCapacity,
+      id: "commons.carryingCapacity",
+    },
+    {
+      Header: (
+        <span>
+          Eff <br /> Cap
+        </span>
+      ),
       accessor: "effectiveCapacity",
     },
   ];
@@ -94,18 +160,14 @@ export default function CommonsTable({ commons, currentUser }) {
     ButtonColumn("Edit", "primary", editCallback, testid),
     ButtonColumn("Delete", "danger", deleteCallback, testid),
     ButtonColumn("Leaderboard", "secondary", leaderboardCallback, testid),
-
     HrefButtonColumn(
       "Stats CSV",
       "success",
       `/api/commonstats/download?commonsId=`,
       testid,
     ),
-
     HrefButtonColumn("Announcements", "info", `/admin/announcements/`, testid),
-
     HrefButtonColumn("Chat", "primary", `/admin/chat/`, testid),
-
     HrefButtonColumn("Dashboard", "info", `/admin/dashboard/`, testid),
   ];
 
@@ -114,29 +176,35 @@ export default function CommonsTable({ commons, currentUser }) {
     : columns;
 
   const commonsModal = (
-    <Modal show={showModal} onHide={() => setShowModal(false)}>
+    <Modal
+      data-testid="CommonsTable-Modal"
+      show={showModal}
+      onHide={() => setShowModal(false)}
+    >
       <Modal.Header closeButton>
-        <Modal.Title>Delete Commons</Modal.Title>
+        <Modal.Title>Confirm Deletion</Modal.Title>
       </Modal.Header>
 
-      <Modal.Body>
-        Are you sure you want to delete the commons{" "}
-        {cellToDelete?.row.values["commons.name"]}?
-      </Modal.Body>
+      <Modal.Body>Are you sure you want to delete this commons?</Modal.Body>
 
       <Modal.Footer>
-        <Button variant="secondary" onClick={() => setShowModal(false)}>
+        <Button
+          variant="secondary"
+          data-testid="CommonsTable-Modal-Cancel"
+          onClick={() => setShowModal(false)}
+        >
           Keep this Commons
         </Button>
 
         <Button
           variant="danger"
+          data-testid="CommonsTable-Modal-Delete"
           onClick={() => {
             deleteMutation.mutate(cellToDelete);
             setShowModal(false);
           }}
         >
-          Delete
+          Permanently Delete
         </Button>
       </Modal.Footer>
     </Modal>
@@ -145,7 +213,6 @@ export default function CommonsTable({ commons, currentUser }) {
   return (
     <>
       {commonsModal}
-
       <OurTable data={commons} columns={columnsToDisplay} testid={testid} />
     </>
   );

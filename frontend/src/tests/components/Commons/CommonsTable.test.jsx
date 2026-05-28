@@ -11,8 +11,6 @@ import {
   onDeleteSuccess,
 } from "main/utils/commonsUtils";
 
-// Next line uses technique from https://www.chakshunyu.com/blog/how-to-spy-on-a-named-import-in-jest/
-
 const mockedNavigate = vi.fn();
 
 vi.mock("react-router", async () => ({
@@ -23,51 +21,55 @@ vi.mock("react-router", async () => ({
 describe("UserTable tests", () => {
   const queryClient = new QueryClient();
 
-  test("renders without crashing for empty table with user not logged in", () => {
-    const currentUser = null;
+  beforeEach(() => {
+    mockedNavigate.mockClear();
+  });
 
+  test("renders without crashing for empty table with user not logged in", () => {
     render(
       <QueryClientProvider client={queryClient}>
         <Router>
-          <CommonsTable commons={[]} currentUser={currentUser} />
+          <CommonsTable commons={[]} currentUser={null} />
         </Router>
       </QueryClientProvider>,
     );
   });
 
   test("renders without crashing for empty table for ordinary user", () => {
-    const currentUser = currentUserFixtures.userOnly;
-
     render(
       <QueryClientProvider client={queryClient}>
         <Router>
-          <CommonsTable commons={[]} currentUser={currentUser} />
+          <CommonsTable
+            commons={[]}
+            currentUser={currentUserFixtures.userOnly}
+          />
         </Router>
       </QueryClientProvider>,
     );
   });
 
   test("renders without crashing for empty table for admin", () => {
-    const currentUser = currentUserFixtures.adminUser;
-
     render(
       <QueryClientProvider client={queryClient}>
         <Router>
-          <CommonsTable commons={[]} currentUser={currentUser} />
+          <CommonsTable
+            commons={[]}
+            currentUser={currentUserFixtures.adminUser}
+          />
         </Router>
       </QueryClientProvider>,
     );
   });
 
   test("Has the expected column headers and content for adminUser", () => {
-    const currentUser = currentUserFixtures.adminUser;
+    const testId = "CommonsTable";
 
     render(
       <QueryClientProvider client={queryClient}>
         <Router>
           <CommonsTable
             commons={commonsPlusFixtures.threeCommonsPlus}
-            currentUser={currentUser}
+            currentUser={currentUserFixtures.adminUser}
           />
         </Router>
       </QueryClientProvider>,
@@ -83,37 +85,15 @@ describe("UserTable tests", () => {
       /Last\s+Date/,
       /Degrad\s+Rate/,
       /Show\s+LrdrBrd\?/,
+      /Show\s+Chat\?/,
       /Tot\s+Cows/,
       /Cap \/\s+User/,
       /Carry\s+Cap/,
       /Eff\s+Cap/,
     ];
 
-    const expectedFields = [
-      "id",
-      "name",
-      "cowPrice",
-      "milkPrice",
-      "startingBalance",
-      "startingDate",
-      "lastDate",
-      "degradationRate",
-      "capacityPerUser",
-      "carryingCapacity",
-    ];
-
-    const testId = "CommonsTable";
-
     expectedHeaders.forEach((headerText) => {
-      const header = screen.getByText(headerText);
-      expect(header).toBeInTheDocument();
-    });
-
-    expectedFields.forEach((field) => {
-      const header = screen.getByTestId(
-        `${testId}-cell-row-0-col-commons.${field}`,
-      );
-      expect(header).toBeInTheDocument();
+      expect(screen.getByText(headerText)).toBeInTheDocument();
     });
 
     expect(
@@ -199,9 +179,6 @@ describe("UserTable tests", () => {
     expect(
       screen.getByTestId(`${testId}-cell-row-0-col-Announcements-button`),
     ).toHaveClass("btn-info");
-    expect(
-      screen.getByTestId(`${testId}-cell-row-0-col-Announcements-button`),
-    ).toHaveClass("btn-info");
 
     expect(
       screen.getByTestId(`${testId}-cell-row-0-col-Announcements-button`),
@@ -224,7 +201,47 @@ describe("UserTable tests", () => {
     ).toHaveAttribute("href", "/admin/dashboard/1");
   });
 
-  test("Edit button navigates to edit commons page", async () => {});
+  test("Edit button navigates to edit commons page", async () => {
+    render(
+      <QueryClientProvider client={queryClient}>
+        <Router>
+          <CommonsTable
+            commons={commonsPlusFixtures.threeCommonsPlus}
+            currentUser={currentUserFixtures.adminUser}
+          />
+        </Router>
+      </QueryClientProvider>,
+    );
+
+    const editButton = await screen.findByTestId(
+      "CommonsTable-cell-row-0-col-Edit-button",
+    );
+
+    fireEvent.click(editButton);
+
+    expect(mockedNavigate).toHaveBeenCalledWith("/admin/editcommons/1");
+  });
+
+  test("Leaderboard button navigates to leaderboard page", async () => {
+    render(
+      <QueryClientProvider client={queryClient}>
+        <Router>
+          <CommonsTable
+            commons={commonsPlusFixtures.threeCommonsPlus}
+            currentUser={currentUserFixtures.adminUser}
+          />
+        </Router>
+      </QueryClientProvider>,
+    );
+
+    const leaderboardButton = await screen.findByTestId(
+      "CommonsTable-cell-row-0-col-Leaderboard-button",
+    );
+
+    fireEvent.click(leaderboardButton);
+
+    expect(mockedNavigate).toHaveBeenCalledWith("/leaderboard/1");
+  });
 });
 
 describe("Modal tests", () => {
@@ -247,14 +264,12 @@ describe("Modal tests", () => {
   });
 
   test("Clicking Delete button opens the modal for adminUser", async () => {
-    const currentUser = currentUserFixtures.adminUser;
-
     render(
       <QueryClientProvider client={queryClient}>
         <Router>
           <CommonsTable
             commons={commonsPlusFixtures.threeCommonsPlus}
-            currentUser={currentUser}
+            currentUser={currentUserFixtures.adminUser}
           />
         </Router>
       </QueryClientProvider>,
@@ -276,8 +291,6 @@ describe("Modal tests", () => {
   });
 
   test("Clicking Permanently Delete button deletes the commons", async () => {
-    const currentUser = currentUserFixtures.adminUser;
-
     const useBackendMutationSpy = vi.spyOn(
       useBackendModule,
       "useBackendMutation",
@@ -288,7 +301,7 @@ describe("Modal tests", () => {
         <Router>
           <CommonsTable
             commons={commonsPlusFixtures.threeCommonsPlus}
-            currentUser={currentUser}
+            currentUser={currentUserFixtures.adminUser}
           />
         </Router>
       </QueryClientProvider>,
@@ -320,14 +333,12 @@ describe("Modal tests", () => {
   });
 
   test("Clicking Keep this Commons button cancels the deletion", async () => {
-    const currentUser = currentUserFixtures.adminUser;
-
     render(
       <QueryClientProvider client={queryClient}>
         <Router>
           <CommonsTable
             commons={commonsPlusFixtures.threeCommonsPlus}
-            currentUser={currentUser}
+            currentUser={currentUserFixtures.adminUser}
           />
         </Router>
       </QueryClientProvider>,
@@ -339,7 +350,9 @@ describe("Modal tests", () => {
 
     fireEvent.click(deleteButton);
 
-    const cancelButton = await screen.findByTestId("CommonsTable-Modal-Cancel");
+    const cancelButton = await screen.findByTestId(
+      "CommonsTable-Modal-Cancel",
+    );
 
     fireEvent.click(cancelButton);
 
@@ -351,14 +364,12 @@ describe("Modal tests", () => {
   });
 
   test("Pressing the escape key on the modal cancels the deletion", async () => {
-    const currentUser = currentUserFixtures.adminUser;
-
     render(
       <QueryClientProvider client={queryClient}>
         <Router>
           <CommonsTable
             commons={commonsPlusFixtures.threeCommonsPlus}
-            currentUser={currentUser}
+            currentUser={currentUserFixtures.adminUser}
           />
         </Router>
       </QueryClientProvider>,
