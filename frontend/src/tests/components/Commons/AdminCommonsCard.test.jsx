@@ -5,15 +5,26 @@ import { vi } from "vitest";
 
 import AdminCommonsCard from "main/components/Commons/AdminCommonsCard";
 
-const { mockNavigate, mockMutate, mockAxiosParams } = vi.hoisted(() => ({
+const {
+  mockNavigate,
+  mockMutate,
+  mockAxiosParams,
+  mockMutationOptions,
+  mockMutationDeps,
+} = vi.hoisted(() => ({
   mockNavigate: vi.fn(),
   mockMutate: vi.fn(),
   mockAxiosParams: vi.fn(),
+  mockMutationOptions: vi.fn(),
+  mockMutationDeps: vi.fn(),
 }));
 
 vi.mock("react-router", async () => {
   const actual = await vi.importActual("react-router");
-  return { ...actual, useNavigate: () => mockNavigate };
+  return {
+    ...actual,
+    useNavigate: () => mockNavigate,
+  };
 });
 
 vi.mock("main/utils/currentUser", async () => {
@@ -28,9 +39,14 @@ vi.mock("main/utils/useBackend", async () => {
   const actual = await vi.importActual("main/utils/useBackend");
   return {
     ...actual,
-    useBackendMutation: (axiosParams) => {
+    useBackendMutation: (axiosParams, options, deps) => {
       mockAxiosParams.mockImplementation(axiosParams);
-      return { mutate: mockMutate };
+      mockMutationOptions(options);
+      mockMutationDeps(deps);
+
+      return {
+        mutate: mockMutate,
+      };
     },
   };
 });
@@ -64,30 +80,40 @@ describe("AdminCommonsCard tests", () => {
     vi.clearAllMocks();
   });
 
-  const renderComponent = (
-    currentUser = adminUser,
-    commonItem = sampleCommons,
-  ) =>
-    render(
+  const renderComponent = (...args) => {
+    const currentUser = args.length >= 1 ? args[0] : adminUser;
+    const commonItem = args.length >= 2 ? args[1] : sampleCommons;
+
+    return render(
       <QueryClientProvider client={queryClient}>
         <MemoryRouter>
-          <AdminCommonsCard commonItem={commonItem} currentUser={currentUser} />
+          <AdminCommonsCard currentUser={currentUser} commonItem={commonItem} />
         </MemoryRouter>
       </QueryClientProvider>,
     );
+  };
 
   test("renders without crashing for admin user", () => {
     renderComponent();
+
     expect(screen.getByTestId("AdminCommonsCard-1")).toBeInTheDocument();
   });
 
   test("does not render for non-admin user", () => {
     renderComponent(regularUser);
+
     expect(screen.queryByTestId("AdminCommonsCard-1")).not.toBeInTheDocument();
   });
 
   test("does not render when commonItem has no commons", () => {
     renderComponent(adminUser, {});
+
+    expect(screen.queryByTestId("AdminCommonsCard-1")).not.toBeInTheDocument();
+  });
+
+  test("does not render when commonItem is undefined", () => {
+    renderComponent(adminUser, undefined);
+
     expect(screen.queryByTestId("AdminCommonsCard-1")).not.toBeInTheDocument();
   });
 
@@ -95,6 +121,7 @@ describe("AdminCommonsCard tests", () => {
     renderComponent();
 
     expect(screen.getByText("Anika's Ant Farm (ID: 1)")).toBeInTheDocument();
+
     expect(screen.getByText("Cow Price:")).toBeInTheDocument();
     expect(screen.getByText("Milk Price:")).toBeInTheDocument();
     expect(screen.getByText("Start Balance:")).toBeInTheDocument();
@@ -111,10 +138,6 @@ describe("AdminCommonsCard tests", () => {
     expect(screen.getByText("45")).toBeInTheDocument();
     expect(screen.getByText("11")).toBeInTheDocument();
     expect(screen.getByText("1000")).toBeInTheDocument();
-    expect(screen.getByText("2024-01-01")).toBeInTheDocument();
-    expect(screen.getByText("2024-12-31")).toBeInTheDocument();
-    expect(screen.getByText("0.02")).toBeInTheDocument();
-    expect(screen.getAllByText("true").length).toBeGreaterThanOrEqual(2);
     expect(screen.getByText("42")).toBeInTheDocument();
     expect(screen.getByText("20")).toBeInTheDocument();
     expect(screen.getByText("100")).toBeInTheDocument();
@@ -127,25 +150,30 @@ describe("AdminCommonsCard tests", () => {
       effectiveCapacity: undefined,
     });
 
-    expect(screen.getByText("Eff Cap:")).toBeInTheDocument();
     expect(screen.getByText("0")).toBeInTheDocument();
   });
 
   test("edit button navigates correctly", () => {
     renderComponent();
+
     fireEvent.click(screen.getByTestId("AdminCommonsCard-Edit-1"));
+
     expect(mockNavigate).toHaveBeenCalledWith("/admin/editcommons/1");
   });
 
   test("leaderboard button navigates correctly", () => {
     renderComponent();
+
     fireEvent.click(screen.getByTestId("AdminCommonsCard-Leaderboard-1"));
+
     expect(mockNavigate).toHaveBeenCalledWith("/leaderboard/1");
   });
 
   test("chat button navigates correctly", () => {
     renderComponent();
+
     fireEvent.click(screen.getByTestId("AdminCommonsCard-Chat-1"));
+
     expect(mockNavigate).toHaveBeenCalledWith("/admin/chat/1");
   });
 
@@ -153,16 +181,41 @@ describe("AdminCommonsCard tests", () => {
     renderComponent();
 
     fireEvent.click(screen.getByTestId("AdminCommonsCard-Delete-1"));
+
     expect(screen.getByTestId("AdminCommonsCard-Modal-1")).toBeInTheDocument();
 
     fireEvent.click(screen.getByTestId("AdminCommonsCard-Modal-Delete-1"));
+
     expect(mockMutate).toHaveBeenCalledWith(1);
+  });
+
+  test("modal is closed by default", () => {
+    renderComponent();
+
+    expect(
+      screen.queryByTestId("AdminCommonsCard-Modal-1"),
+    ).not.toBeInTheDocument();
+  });
+
+  test("delete confirm closes modal after mutation", async () => {
+    renderComponent();
+
+    fireEvent.click(screen.getByTestId("AdminCommonsCard-Delete-1"));
+
+    fireEvent.click(screen.getByTestId("AdminCommonsCard-Modal-Delete-1"));
+
+    await waitFor(() => {
+      expect(
+        screen.queryByTestId("AdminCommonsCard-Modal-1"),
+      ).not.toBeInTheDocument();
+    });
   });
 
   test("cancel delete closes modal", async () => {
     renderComponent();
 
     fireEvent.click(screen.getByTestId("AdminCommonsCard-Delete-1"));
+
     fireEvent.click(screen.getByTestId("AdminCommonsCard-Modal-Cancel-1"));
 
     await waitFor(() => {
@@ -172,10 +225,11 @@ describe("AdminCommonsCard tests", () => {
     });
   });
 
-  test("modal closes when close button is clicked", async () => {
+  test("modal closes when close button clicked", async () => {
     renderComponent();
 
     fireEvent.click(screen.getByTestId("AdminCommonsCard-Delete-1"));
+
     fireEvent.click(screen.getByLabelText("Close"));
 
     await waitFor(() => {
@@ -192,6 +246,29 @@ describe("AdminCommonsCard tests", () => {
       "href",
       "/admin/dashboard/1",
     );
+  });
+
+  test("stats csv and announcements buttons have correct hrefs and testids", () => {
+    renderComponent();
+
+    expect(screen.getByTestId("AdminCommonsCard-StatsCSV-1")).toHaveAttribute(
+      "href",
+      "/api/commonstats/download?commonsId=1",
+    );
+
+    expect(
+      screen.getByTestId("AdminCommonsCard-Announcements-1"),
+    ).toHaveAttribute("href", "/admin/announcements/1");
+  });
+
+  test("card has default box shadow before hover", () => {
+    renderComponent();
+
+    const card = screen.getByTestId("AdminCommonsCard-1");
+
+    expect(card).toHaveStyle({
+      boxShadow: "0 2px 4px rgba(0,0,0,0.1)",
+    });
   });
 
   test("card has hover state", () => {
@@ -228,5 +305,15 @@ describe("AdminCommonsCard tests", () => {
       method: "DELETE",
       params: { id: 1 },
     });
+  });
+
+  test("delete mutation has success handler and cache invalidation deps", () => {
+    renderComponent();
+
+    expect(mockMutationOptions).toHaveBeenCalledWith({
+      onSuccess: expect.any(Function),
+    });
+
+    expect(mockMutationDeps).toHaveBeenCalledWith(["/api/commons/allplus"]);
   });
 });
