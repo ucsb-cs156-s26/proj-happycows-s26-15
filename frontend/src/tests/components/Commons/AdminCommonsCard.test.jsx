@@ -307,6 +307,23 @@ describe("AdminCommonsCard tests", () => {
     });
   });
 
+  test("formatDate slices date strings to first 10 characters", () => {
+    renderComponent(adminUser, {
+      ...sampleCommons,
+      commons: {
+        ...sampleCommons.commons,
+        startingDate: "2024-01-01T12:34:56",
+        lastDate: "2024-12-31T23:59:59",
+      },
+    });
+
+    expect(screen.getByText("2024-01-01")).toBeInTheDocument();
+    expect(screen.getByText("2024-12-31")).toBeInTheDocument();
+
+    expect(screen.queryByText("2024-01-01T12:34:56")).not.toBeInTheDocument();
+    expect(screen.queryByText("2024-12-31T23:59:59")).not.toBeInTheDocument();
+  });
+
   test("delete mutation has success handler and cache invalidation deps", () => {
     renderComponent();
 
