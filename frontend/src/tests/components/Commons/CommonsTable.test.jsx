@@ -350,9 +350,7 @@ describe("Modal tests", () => {
 
     fireEvent.click(deleteButton);
 
-    const cancelButton = await screen.findByTestId(
-      "CommonsTable-Modal-Cancel",
-    );
+    const cancelButton = await screen.findByTestId("CommonsTable-Modal-Cancel");
 
     fireEvent.click(cancelButton);
 
