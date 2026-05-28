@@ -236,25 +236,19 @@ describe("PlayPage tests", () => {
       expect(screen.getByTestId("playpage-chat-toggle")).toBeInTheDocument();
     });
 
-    // Make sure the chat toggle button is visible
     const chatToggleButton = screen.getByTestId("playpage-chat-toggle");
     expect(chatToggleButton).toBeInTheDocument();
 
-    // Make sure the ChatPanel is not visible initially
     expect(screen.queryByTestId("ChatPanel")).not.toBeInTheDocument();
 
-    // Click the chat toggle button to open the ChatPanel
     fireEvent.click(chatToggleButton);
 
-    // Wait for the ChatPanel to become visible
     await waitFor(() => {
       expect(screen.getByTestId("ChatPanel")).toBeInTheDocument();
     });
 
-    // Click the chat toggle button again to close the ChatPanel
     fireEvent.click(chatToggleButton);
 
-    // Wait for the ChatPanel to become hidden
     await waitFor(() => {
       expect(screen.queryByTestId("ChatPanel")).not.toBeInTheDocument();
     });
@@ -283,7 +277,7 @@ describe("PlayPage tests", () => {
     const messageIcon = screen.getByTestId("message-icon");
     expect(messageIcon).toHaveStyle("font-family: Arial, sans-serif;");
     expect(messageIcon).toHaveStyle("font-size: 30px;");
-    // Click the chat toggle button to open the ChatPanel
+
     fireEvent.click(chatButton);
 
     await waitFor(() => {
@@ -293,7 +287,6 @@ describe("PlayPage tests", () => {
     expect(closeIcon).toHaveStyle("font-family: Arial, sans-serif;");
     expect(closeIcon).toHaveStyle("font-size: 30px;");
 
-    // Check styles for the chat button
     expect(chatButton).toHaveStyle(`
             width: 60px;
             height: 60px;
@@ -305,7 +298,6 @@ describe("PlayPage tests", () => {
             right: 30px;
         `);
 
-    // Check styles for the chat container
     expect(chatContainer).toHaveStyle(`
             width: 550px;
             position: fixed;
@@ -691,5 +683,20 @@ describe("PlayPage tests", () => {
         screen.getByText("This commons does not exist!"),
       ).toBeInTheDocument();
     });
+  });
+
+  test("chat toggle button explicitly keeps black text color", async () => {
+    render(
+      <QueryClientProvider client={queryClient}>
+        <MemoryRouter>
+          <PlayPage />
+        </MemoryRouter>
+      </QueryClientProvider>,
+    );
+
+    const chatButton = await screen.findByTestId("playpage-chat-toggle");
+
+    expect(chatButton.style.color).toBe("black");
+    expect(chatButton).not.toHaveStyle({ color: "" });
   });
 });

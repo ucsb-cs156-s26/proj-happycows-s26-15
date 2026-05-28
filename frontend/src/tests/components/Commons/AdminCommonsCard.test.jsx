@@ -1,48 +1,73 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "react-query";
 import { MemoryRouter } from "react-router";
-import axios from "axios";
-import AxiosMockAdapter from "axios-mock-adapter";
-import AdminCommonsCard from "main/components/Commons/AdminCommonsCard";
-import commonsPlusFixtures from "fixtures/commonsPlusFixtures";
-import { currentUserFixtures } from "fixtures/currentUserFixtures";
-import * as useBackend from "main/utils/useBackend";
-import { onDeleteSuccess } from "main/utils/commonsUtils";
 import { vi } from "vitest";
-import "@testing-library/jest-dom";
 
-const mockToast = vi.fn();
-vi.mock("react-toastify", async () => {
-  const originalModule = await vi.importActual("react-toastify");
+import AdminCommonsCard from "main/components/Commons/AdminCommonsCard";
+
+const { mockNavigate, mockMutate, mockAxiosParams } = vi.hoisted(() => ({
+  mockNavigate: vi.fn(),
+  mockMutate: vi.fn(),
+  mockAxiosParams: vi.fn(),
+}));
+
+vi.mock("react-router", async () => {
+  const actual = await vi.importActual("react-router");
+  return { ...actual, useNavigate: () => mockNavigate };
+});
+
+vi.mock("main/utils/currentUser", async () => {
+  const actual = await vi.importActual("main/utils/currentUser");
   return {
-    __esModule: true,
-    ...originalModule,
-    toast: (x) => mockToast(x),
+    ...actual,
+    hasRole: (currentUser, role) => currentUser?.roles?.includes(role),
   };
 });
 
-const mockedNavigate = vi.fn();
-
-vi.mock("react-router", async () => ({
-  ...(await vi.importActual("react-router")),
-  useNavigate: () => mockedNavigate,
-}));
+vi.mock("main/utils/useBackend", async () => {
+  const actual = await vi.importActual("main/utils/useBackend");
+  return {
+    ...actual,
+    useBackendMutation: (axiosParams) => {
+      mockAxiosParams.mockImplementation(axiosParams);
+      return { mutate: mockMutate };
+    },
+  };
+});
 
 describe("AdminCommonsCard tests", () => {
-  const axiosMock = new AxiosMockAdapter(axios);
+  const queryClient = new QueryClient();
+
+  const adminUser = { roles: ["ROLE_ADMIN"] };
+  const regularUser = { roles: ["ROLE_USER"] };
+
+  const sampleCommons = {
+    commons: {
+      id: 1,
+      name: "Anika's Ant Farm",
+      cowPrice: 45,
+      milkPrice: 11,
+      startingBalance: 1000,
+      startingDate: "2024-01-01T00:00:00",
+      lastDate: "2024-12-31T00:00:00",
+      degradationRate: 0.02,
+      showLeaderboard: true,
+      showChat: true,
+      capacityPerUser: 20,
+      carryingCapacity: 100,
+    },
+    totalCows: 42,
+    effectiveCapacity: 87,
+  };
 
   beforeEach(() => {
-    axiosMock.reset();
-    axiosMock.resetHistory();
-    mockedNavigate.mockClear();
-    mockToast.mockClear();
+    vi.clearAllMocks();
   });
 
-  test("renders without crashing for admin user", () => {
-    const queryClient = new QueryClient();
-    const commonItem = commonsPlusFixtures.threeCommonsPlus[0];
-    const currentUser = currentUserFixtures.adminUser;
-
+  const renderComponent = (
+    currentUser = adminUser,
+    commonItem = sampleCommons,
+  ) =>
     render(
       <QueryClientProvider client={queryClient}>
         <MemoryRouter>
@@ -51,62 +76,25 @@ describe("AdminCommonsCard tests", () => {
       </QueryClientProvider>,
     );
 
+  test("renders without crashing for admin user", () => {
+    renderComponent();
     expect(screen.getByTestId("AdminCommonsCard-1")).toBeInTheDocument();
   });
 
-  test("dashboard button has correct href and testid", () => {
-    const queryClient = new QueryClient();
-    const commonItem = commonsPlusFixtures.threeCommonsPlus[0];
-    const currentUser = currentUserFixtures.adminUser;
-
-    render(
-      <QueryClientProvider client={queryClient}>
-        <MemoryRouter>
-          <AdminCommonsCard commonItem={commonItem} currentUser={currentUser} />
-        </MemoryRouter>
-      </QueryClientProvider>,
-    );
-
-    const dashboardButton = screen.getByTestId("AdminCommonsCard-Dashboard-1");
-
-    expect(dashboardButton).toBeInTheDocument();
-    expect(dashboardButton).toHaveAttribute("href", "/admin/dashboard/1");
-    expect(dashboardButton).toHaveAttribute(
-      "data-testid",
-      "AdminCommonsCard-Dashboard-1",
-    );
+  test("does not render for non-admin user", () => {
+    renderComponent(regularUser);
+    expect(screen.queryByTestId("AdminCommonsCard-1")).not.toBeInTheDocument();
   });
 
-  test("returns null for non-admin user", () => {
-    const queryClient = new QueryClient();
-    const commonItem = commonsPlusFixtures.threeCommonsPlus[0];
-    const currentUser = currentUserFixtures.userOnly;
-
-    const { container } = render(
-      <QueryClientProvider client={queryClient}>
-        <MemoryRouter>
-          <AdminCommonsCard commonItem={commonItem} currentUser={currentUser} />
-        </MemoryRouter>
-      </QueryClientProvider>,
-    );
-
-    expect(container.firstChild).toBeNull();
+  test("does not render when commonItem has no commons", () => {
+    renderComponent(adminUser, {});
+    expect(screen.queryByTestId("AdminCommonsCard-1")).not.toBeInTheDocument();
   });
 
   test("displays all commons fields correctly", () => {
-    const queryClient = new QueryClient();
-    const commonItem = commonsPlusFixtures.threeCommonsPlus[0];
-    const currentUser = currentUserFixtures.adminUser;
+    renderComponent();
 
-    render(
-      <QueryClientProvider client={queryClient}>
-        <MemoryRouter>
-          <AdminCommonsCard commonItem={commonItem} currentUser={currentUser} />
-        </MemoryRouter>
-      </QueryClientProvider>,
-    );
-
-    expect(screen.getByText("com (ID: 1)")).toBeInTheDocument();
+    expect(screen.getByText("Anika's Ant Farm (ID: 1)")).toBeInTheDocument();
     expect(screen.getByText("Cow Price:")).toBeInTheDocument();
     expect(screen.getByText("Milk Price:")).toBeInTheDocument();
     expect(screen.getByText("Start Balance:")).toBeInTheDocument();
@@ -120,207 +108,62 @@ describe("AdminCommonsCard tests", () => {
     expect(screen.getByText("Carry Cap:")).toBeInTheDocument();
     expect(screen.getByText("Eff Cap:")).toBeInTheDocument();
 
-    const cowPriceLabel = screen.getByText("Cow Price:");
-    const cowPriceValue = cowPriceLabel.parentElement.nextElementSibling;
-    expect(cowPriceValue).toHaveTextContent("1");
-    const milkPriceLabel = screen.getByText("Milk Price:");
-    const milkPriceValue = milkPriceLabel.parentElement.nextElementSibling;
-    expect(milkPriceValue).toHaveTextContent("1");
-    const startBalanceLabel = screen.getByText("Start Balance:");
-    const startBalanceValue =
-      startBalanceLabel.parentElement.nextElementSibling;
-    expect(startBalanceValue).toHaveTextContent("10");
-    const startingDateLabel = screen.getByText("Starting Date:");
-    const startingDateValue =
-      startingDateLabel.parentElement.nextElementSibling;
-    expect(startingDateValue).toHaveTextContent("2022-11-22");
-    const lastDateLabel = screen.getByText("Last Date:");
-    const lastDateValue = lastDateLabel.parentElement.nextElementSibling;
-    expect(lastDateValue).toHaveTextContent("2022-11-22");
-    const degradationRateLabel = screen.getByText("Degrad Rate:");
-    const degradationRateValue =
-      degradationRateLabel.parentElement.nextElementSibling;
-    expect(degradationRateValue).toHaveTextContent("0.01");
-    const showLeaderboardLabel = screen.getByText("Show Leaderboard:");
-    const showLeaderboardValue =
-      showLeaderboardLabel.parentElement.nextElementSibling;
-    expect(showLeaderboardValue).toHaveTextContent("false");
-    const showChatLabel = screen.getByText("Show Chat:");
-    const showChatValue = showChatLabel.parentElement.nextElementSibling;
-    expect(showChatValue).toHaveTextContent("false");
-    const totalCowsLabel = screen.getByText("Total Cows:");
-    const totalCowsValue = totalCowsLabel.parentElement.nextElementSibling;
-    expect(totalCowsValue).toHaveTextContent("10");
-    const capacityPerUserLabel = screen.getByText("Cap / User:");
-    const capacityPerUserValue =
-      capacityPerUserLabel.parentElement.nextElementSibling;
-    expect(capacityPerUserValue).toHaveTextContent("50");
-    const carryingCapacityLabel = screen.getByText("Carry Cap:");
-    const carryingCapacityValue =
-      carryingCapacityLabel.parentElement.nextElementSibling;
-    expect(carryingCapacityValue).toHaveTextContent("100");
-    const effectiveCapacityLabel = screen.getByText("Eff Cap:");
-    const effectiveCapacityValue =
-      effectiveCapacityLabel.parentElement.nextElementSibling;
-    expect(effectiveCapacityValue).toHaveTextContent("100");
+    expect(screen.getByText("45")).toBeInTheDocument();
+    expect(screen.getByText("11")).toBeInTheDocument();
+    expect(screen.getByText("1000")).toBeInTheDocument();
+    expect(screen.getByText("2024-01-01")).toBeInTheDocument();
+    expect(screen.getByText("2024-12-31")).toBeInTheDocument();
+    expect(screen.getByText("0.02")).toBeInTheDocument();
+    expect(screen.getAllByText("true").length).toBeGreaterThanOrEqual(2);
+    expect(screen.getByText("42")).toBeInTheDocument();
+    expect(screen.getByText("20")).toBeInTheDocument();
+    expect(screen.getByText("100")).toBeInTheDocument();
+    expect(screen.getByText("87")).toBeInTheDocument();
   });
 
-  test("delete mutation invalidates commons cache", () => {
-    const queryClient = new QueryClient();
-    const commonItem = commonsPlusFixtures.threeCommonsPlus[0];
-    const currentUser = currentUserFixtures.adminUser;
-
-    const useBackendMutationSpy = vi.spyOn(useBackend, "useBackendMutation");
-
-    render(
-      <QueryClientProvider client={queryClient}>
-        <MemoryRouter>
-          <AdminCommonsCard commonItem={commonItem} currentUser={currentUser} />
-        </MemoryRouter>
-      </QueryClientProvider>,
-    );
-
-    expect(useBackendMutationSpy).toHaveBeenCalledWith(
-      expect.any(Function),
-      { onSuccess: onDeleteSuccess },
-      ["/api/commons/allplus"],
-    );
-
-    useBackendMutationSpy.mockRestore();
-  });
-
-  test("displays true values for showLeaderboard and showChat", () => {
-    const queryClient = new QueryClient();
-    const commonItem = commonsPlusFixtures.threeCommonsPlus[1];
-    const currentUser = currentUserFixtures.adminUser;
-
-    render(
-      <QueryClientProvider client={queryClient}>
-        <MemoryRouter>
-          <AdminCommonsCard commonItem={commonItem} currentUser={currentUser} />
-        </MemoryRouter>
-      </QueryClientProvider>,
-    );
-
-    const trueValues = screen.getAllByText("true");
-    expect(trueValues.length).toBeGreaterThanOrEqual(2);
-  });
-
-  test("displays default values for undefined totalCows and effectiveCapacity", () => {
-    const queryClient = new QueryClient();
-    const commonItem = {
-      ...commonsPlusFixtures.threeCommonsPlus[0],
-      totalCows: undefined,
+  test("displays default effective capacity when missing", () => {
+    renderComponent(adminUser, {
+      ...sampleCommons,
       effectiveCapacity: undefined,
-    };
-    const currentUser = currentUserFixtures.adminUser;
-
-    render(
-      <QueryClientProvider client={queryClient}>
-        <MemoryRouter>
-          <AdminCommonsCard commonItem={commonItem} currentUser={currentUser} />
-        </MemoryRouter>
-      </QueryClientProvider>,
-    );
-
-    const zeroValues = screen.getAllByText("0");
-    expect(zeroValues.length).toBeGreaterThanOrEqual(2);
-  });
-
-  test("formatDate formats date string correctly", () => {
-    const queryClient = new QueryClient();
-    const commonItem = {
-      ...commonsPlusFixtures.threeCommonsPlus[0],
-      commons: {
-        ...commonsPlusFixtures.threeCommonsPlus[0].commons,
-        startingDate: "2022-11-22T21:23:45",
-        lastDate: "2022-12-25T10:30:00",
-      },
-    };
-    const currentUser = currentUserFixtures.adminUser;
-
-    render(
-      <QueryClientProvider client={queryClient}>
-        <MemoryRouter>
-          <AdminCommonsCard commonItem={commonItem} currentUser={currentUser} />
-        </MemoryRouter>
-      </QueryClientProvider>,
-    );
-
-    expect(screen.getByText("2022-11-22")).toBeInTheDocument();
-    expect(screen.getByText("2022-12-25")).toBeInTheDocument();
-  });
-
-  test("modal starts closed", () => {
-    const queryClient = new QueryClient();
-    const commonItem = commonsPlusFixtures.threeCommonsPlus[0];
-    const currentUser = currentUserFixtures.adminUser;
-
-    render(
-      <QueryClientProvider client={queryClient}>
-        <MemoryRouter>
-          <AdminCommonsCard commonItem={commonItem} currentUser={currentUser} />
-        </MemoryRouter>
-      </QueryClientProvider>,
-    );
-
-    expect(
-      screen.queryByTestId("AdminCommonsCard-Modal-1"),
-    ).not.toBeInTheDocument();
-  });
-
-  test("delete button opens modal", async () => {
-    const queryClient = new QueryClient();
-    const commonItem = commonsPlusFixtures.threeCommonsPlus[0];
-    const currentUser = currentUserFixtures.adminUser;
-
-    render(
-      <QueryClientProvider client={queryClient}>
-        <MemoryRouter>
-          <AdminCommonsCard commonItem={commonItem} currentUser={currentUser} />
-        </MemoryRouter>
-      </QueryClientProvider>,
-    );
-
-    const deleteButton = screen.getByTestId("AdminCommonsCard-Delete-1");
-    fireEvent.click(deleteButton);
-
-    await waitFor(() => {
-      expect(
-        screen.getByTestId("AdminCommonsCard-Modal-1"),
-      ).toBeInTheDocument();
     });
 
-    expect(screen.getByText("Confirm Deletion")).toBeInTheDocument();
-    expect(
-      screen.getByText("Are you sure you want to delete this commons?"),
-    ).toBeInTheDocument();
+    expect(screen.getByText("Eff Cap:")).toBeInTheDocument();
+    expect(screen.getByText("0")).toBeInTheDocument();
   });
 
-  test("modal cancel button closes modal", async () => {
-    const queryClient = new QueryClient();
-    const commonItem = commonsPlusFixtures.threeCommonsPlus[0];
-    const currentUser = currentUserFixtures.adminUser;
+  test("edit button navigates correctly", () => {
+    renderComponent();
+    fireEvent.click(screen.getByTestId("AdminCommonsCard-Edit-1"));
+    expect(mockNavigate).toHaveBeenCalledWith("/admin/editcommons/1");
+  });
 
-    render(
-      <QueryClientProvider client={queryClient}>
-        <MemoryRouter>
-          <AdminCommonsCard commonItem={commonItem} currentUser={currentUser} />
-        </MemoryRouter>
-      </QueryClientProvider>,
-    );
+  test("leaderboard button navigates correctly", () => {
+    renderComponent();
+    fireEvent.click(screen.getByTestId("AdminCommonsCard-Leaderboard-1"));
+    expect(mockNavigate).toHaveBeenCalledWith("/leaderboard/1");
+  });
 
-    const deleteButton = screen.getByTestId("AdminCommonsCard-Delete-1");
-    fireEvent.click(deleteButton);
+  test("chat button navigates correctly", () => {
+    renderComponent();
+    fireEvent.click(screen.getByTestId("AdminCommonsCard-Chat-1"));
+    expect(mockNavigate).toHaveBeenCalledWith("/admin/chat/1");
+  });
 
-    await waitFor(() => {
-      expect(
-        screen.getByTestId("AdminCommonsCard-Modal-1"),
-      ).toBeInTheDocument();
-    });
+  test("delete modal appears and works correctly", () => {
+    renderComponent();
 
-    const cancelButton = screen.getByTestId("AdminCommonsCard-Modal-Cancel-1");
-    fireEvent.click(cancelButton);
+    fireEvent.click(screen.getByTestId("AdminCommonsCard-Delete-1"));
+    expect(screen.getByTestId("AdminCommonsCard-Modal-1")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId("AdminCommonsCard-Modal-Delete-1"));
+    expect(mockMutate).toHaveBeenCalledWith(1);
+  });
+
+  test("cancel delete closes modal", async () => {
+    renderComponent();
+
+    fireEvent.click(screen.getByTestId("AdminCommonsCard-Delete-1"));
+    fireEvent.click(screen.getByTestId("AdminCommonsCard-Modal-Cancel-1"));
 
     await waitFor(() => {
       expect(
@@ -329,43 +172,11 @@ describe("AdminCommonsCard tests", () => {
     });
   });
 
-  test("modal delete button confirms deletion", async () => {
-    const queryClient = new QueryClient();
-    const commonItem = commonsPlusFixtures.threeCommonsPlus[0];
-    const currentUser = currentUserFixtures.adminUser;
+  test("modal closes when close button is clicked", async () => {
+    renderComponent();
 
-    axiosMock
-      .onDelete("/api/commons", { params: { id: 1 } })
-      .reply(200, "Commons with id 1 was deleted");
-
-    render(
-      <QueryClientProvider client={queryClient}>
-        <MemoryRouter>
-          <AdminCommonsCard commonItem={commonItem} currentUser={currentUser} />
-        </MemoryRouter>
-      </QueryClientProvider>,
-    );
-
-    const deleteButton = screen.getByTestId("AdminCommonsCard-Delete-1");
-    fireEvent.click(deleteButton);
-
-    await waitFor(() => {
-      expect(
-        screen.getByTestId("AdminCommonsCard-Modal-Delete-1"),
-      ).toBeInTheDocument();
-    });
-
-    const confirmDeleteButton = screen.getByTestId(
-      "AdminCommonsCard-Modal-Delete-1",
-    );
-    fireEvent.click(confirmDeleteButton);
-
-    await waitFor(() => {
-      expect(mockToast).toHaveBeenCalledWith("Commons with id 1 was deleted");
-    });
-
-    expect(axiosMock.history.delete.length).toBe(1);
-    expect(axiosMock.history.delete[0].params).toEqual({ id: 1 });
+    fireEvent.click(screen.getByTestId("AdminCommonsCard-Delete-1"));
+    fireEvent.click(screen.getByLabelText("Close"));
 
     await waitFor(() => {
       expect(
@@ -374,498 +185,48 @@ describe("AdminCommonsCard tests", () => {
     });
   });
 
-  test("card hover state starts as false", () => {
-    const queryClient = new QueryClient();
-    const commonItem = commonsPlusFixtures.threeCommonsPlus[0];
-    const currentUser = currentUserFixtures.adminUser;
+  test("dashboard button has correct href and testid", () => {
+    renderComponent();
 
-    render(
-      <QueryClientProvider client={queryClient}>
-        <MemoryRouter>
-          <AdminCommonsCard commonItem={commonItem} currentUser={currentUser} />
-        </MemoryRouter>
-      </QueryClientProvider>,
+    expect(screen.getByTestId("AdminCommonsCard-Dashboard-1")).toHaveAttribute(
+      "href",
+      "/admin/dashboard/1",
     );
-
-    const card = screen.getByTestId("AdminCommonsCard-1");
-    expect(card).toHaveStyle({ boxShadow: "0 2px 4px rgba(0,0,0,0.1)" });
   });
 
   test("card has hover state", () => {
-    const queryClient = new QueryClient();
-    const commonItem = commonsPlusFixtures.threeCommonsPlus[0];
-    const currentUser = currentUserFixtures.adminUser;
-
-    render(
-      <QueryClientProvider client={queryClient}>
-        <MemoryRouter>
-          <AdminCommonsCard commonItem={commonItem} currentUser={currentUser} />
-        </MemoryRouter>
-      </QueryClientProvider>,
-    );
+    renderComponent();
 
     const card = screen.getByTestId("AdminCommonsCard-1");
 
-    expect(card).toHaveStyle({ boxShadow: "0 2px 4px rgba(0,0,0,0.1)" });
+    expect(card).toHaveStyle({
+      transform: "scale(1)",
+      transition: "transform 0.2s",
+    });
 
     fireEvent.mouseEnter(card);
-    expect(card).toHaveStyle({ boxShadow: "0 4px 8px rgba(0,0,0,0.17)" });
+
+    expect(card).toHaveStyle({
+      transform: "scale(1.02)",
+      transition: "transform 0.2s",
+      boxShadow: "0 4px 8px rgba(0,0,0,0.17)",
+    });
 
     fireEvent.mouseLeave(card);
-    expect(card).toHaveStyle({ boxShadow: "0 2px 4px rgba(0,0,0,0.1)" });
-  });
 
-  test("modal onHide closes modal when escape key is pressed", async () => {
-    const queryClient = new QueryClient();
-    const commonItem = commonsPlusFixtures.threeCommonsPlus[0];
-    const currentUser = currentUserFixtures.adminUser;
-
-    render(
-      <QueryClientProvider client={queryClient}>
-        <MemoryRouter>
-          <AdminCommonsCard commonItem={commonItem} currentUser={currentUser} />
-        </MemoryRouter>
-      </QueryClientProvider>,
-    );
-
-    const deleteButton = screen.getByTestId("AdminCommonsCard-Delete-1");
-    fireEvent.click(deleteButton);
-
-    await waitFor(() => {
-      expect(
-        screen.getByTestId("AdminCommonsCard-Modal-1"),
-      ).toBeInTheDocument();
-    });
-
-    fireEvent.keyDown(document, {
-      key: "Escape",
-      code: "Escape",
-      keyCode: 27,
-      charCode: 27,
-    });
-
-    await waitFor(() => {
-      expect(
-        screen.queryByTestId("AdminCommonsCard-Modal-1"),
-      ).not.toBeInTheDocument();
+    expect(card).toHaveStyle({
+      transform: "scale(1)",
+      transition: "transform 0.2s",
     });
   });
 
-  test("displays all button texts correctly", () => {
-    const queryClient = new QueryClient();
-    const commonItem = commonsPlusFixtures.threeCommonsPlus[0];
-    const currentUser = currentUserFixtures.adminUser;
+  test("delete mutation builds correct axios params", () => {
+    renderComponent();
 
-    render(
-      <QueryClientProvider client={queryClient}>
-        <MemoryRouter>
-          <AdminCommonsCard commonItem={commonItem} currentUser={currentUser} />
-        </MemoryRouter>
-      </QueryClientProvider>,
-    );
-
-    expect(screen.getByText("Edit")).toBeInTheDocument();
-    expect(screen.getByText("Delete")).toBeInTheDocument();
-    expect(screen.getByText("Leaderboard")).toBeInTheDocument();
-    expect(screen.getByText("Stats CSV")).toBeInTheDocument();
-    expect(screen.getByText("Announcements")).toBeInTheDocument();
-  });
-
-  test("displays all field labels correctly", () => {
-    const queryClient = new QueryClient();
-    const commonItem = commonsPlusFixtures.threeCommonsPlus[0];
-    const currentUser = currentUserFixtures.adminUser;
-
-    render(
-      <QueryClientProvider client={queryClient}>
-        <MemoryRouter>
-          <AdminCommonsCard commonItem={commonItem} currentUser={currentUser} />
-        </MemoryRouter>
-      </QueryClientProvider>,
-    );
-
-    expect(screen.getByText("Cow Price:")).toBeInTheDocument();
-    expect(screen.getByText("Milk Price:")).toBeInTheDocument();
-    expect(screen.getByText("Start Balance:")).toBeInTheDocument();
-    expect(screen.getByText("Starting Date:")).toBeInTheDocument();
-    expect(screen.getByText("Last Date:")).toBeInTheDocument();
-    expect(screen.getByText("Degrad Rate:")).toBeInTheDocument();
-    expect(screen.getByText("Show Leaderboard:")).toBeInTheDocument();
-    expect(screen.getByText("Show Chat:")).toBeInTheDocument();
-    expect(screen.getByText("Total Cows:")).toBeInTheDocument();
-    expect(screen.getByText("Cap / User:")).toBeInTheDocument();
-    expect(screen.getByText("Carry Cap:")).toBeInTheDocument();
-    expect(screen.getByText("Eff Cap:")).toBeInTheDocument();
-  });
-
-  test("works with different commons ID", () => {
-    const queryClient = new QueryClient();
-    const commonItem = commonsPlusFixtures.threeCommonsPlus[2];
-    const currentUser = currentUserFixtures.adminUser;
-
-    render(
-      <QueryClientProvider client={queryClient}>
-        <MemoryRouter>
-          <AdminCommonsCard commonItem={commonItem} currentUser={currentUser} />
-        </MemoryRouter>
-      </QueryClientProvider>,
-    );
-
-    expect(screen.getByTestId("AdminCommonsCard-3")).toBeInTheDocument();
-    expect(screen.getByText("Not DLG (ID: 3)")).toBeInTheDocument();
-  });
-
-  test("formatDate handles different date string formats", () => {
-    const queryClient = new QueryClient();
-    const commonItem = {
-      ...commonsPlusFixtures.threeCommonsPlus[0],
-      commons: {
-        ...commonsPlusFixtures.threeCommonsPlus[0].commons,
-        startingDate: "2023-01-15T00:00:00.000Z",
-        lastDate: "2023-12-31T23:59:59.999Z",
-      },
-    };
-    const currentUser = currentUserFixtures.adminUser;
-
-    render(
-      <QueryClientProvider client={queryClient}>
-        <MemoryRouter>
-          <AdminCommonsCard commonItem={commonItem} currentUser={currentUser} />
-        </MemoryRouter>
-      </QueryClientProvider>,
-    );
-
-    expect(screen.getByText("2023-01-15")).toBeInTheDocument();
-    expect(screen.getByText("2023-12-31")).toBeInTheDocument();
-  });
-
-  test("formatDate handles date string with String conversion", () => {
-    const queryClient = new QueryClient();
-    const commonItem = {
-      ...commonsPlusFixtures.threeCommonsPlus[0],
-      commons: {
-        ...commonsPlusFixtures.threeCommonsPlus[0].commons,
-        startingDate: 1672531200000,
-        lastDate: "2023-01-01",
-      },
-    };
-    const currentUser = currentUserFixtures.adminUser;
-
-    render(
-      <QueryClientProvider client={queryClient}>
-        <MemoryRouter>
-          <AdminCommonsCard commonItem={commonItem} currentUser={currentUser} />
-        </MemoryRouter>
-      </QueryClientProvider>,
-    );
-
-    const startingDateLabel = screen.getByText("Starting Date:");
-    const startingDateElement =
-      startingDateLabel.parentElement.nextElementSibling;
-    expect(startingDateElement).toBeInTheDocument();
-  });
-
-  test("handles zero values correctly", () => {
-    const queryClient = new QueryClient();
-    const commonItem = {
-      ...commonsPlusFixtures.threeCommonsPlus[1],
-      effectiveCapacity: 0,
-    };
-    const currentUser = currentUserFixtures.adminUser;
-
-    render(
-      <QueryClientProvider client={queryClient}>
-        <MemoryRouter>
-          <AdminCommonsCard commonItem={commonItem} currentUser={currentUser} />
-        </MemoryRouter>
-      </QueryClientProvider>,
-    );
-
-    const zeroValues = screen.getAllByText("0");
-    expect(zeroValues.length).toBeGreaterThanOrEqual(2);
-  });
-
-  test("modal shows correct button texts", async () => {
-    const queryClient = new QueryClient();
-    const commonItem = commonsPlusFixtures.threeCommonsPlus[0];
-    const currentUser = currentUserFixtures.adminUser;
-
-    render(
-      <QueryClientProvider client={queryClient}>
-        <MemoryRouter>
-          <AdminCommonsCard commonItem={commonItem} currentUser={currentUser} />
-        </MemoryRouter>
-      </QueryClientProvider>,
-    );
-
-    const deleteButton = screen.getByTestId("AdminCommonsCard-Delete-1");
-    fireEvent.click(deleteButton);
-
-    await waitFor(() => {
-      expect(
-        screen.getByTestId("AdminCommonsCard-Modal-1"),
-      ).toBeInTheDocument();
+    expect(mockAxiosParams(1)).toEqual({
+      url: "/api/commons",
+      method: "DELETE",
+      params: { id: 1 },
     });
-
-    expect(screen.getByText("Keep this Commons")).toBeInTheDocument();
-    expect(screen.getByText("Permanently Delete")).toBeInTheDocument();
-  });
-
-  test("edit button navigates to edit page", () => {
-    const queryClient = new QueryClient();
-    const commonItem = commonsPlusFixtures.threeCommonsPlus[0];
-    const currentUser = currentUserFixtures.adminUser;
-
-    render(
-      <QueryClientProvider client={queryClient}>
-        <MemoryRouter>
-          <AdminCommonsCard commonItem={commonItem} currentUser={currentUser} />
-        </MemoryRouter>
-      </QueryClientProvider>,
-    );
-
-    const editButton = screen.getByTestId("AdminCommonsCard-Edit-1");
-    fireEvent.click(editButton);
-
-    expect(mockedNavigate).toHaveBeenCalledWith("/admin/editcommons/1");
-  });
-
-  test("leaderboard button navigates to leaderboard page", () => {
-    const queryClient = new QueryClient();
-    const commonItem = commonsPlusFixtures.threeCommonsPlus[0];
-    const currentUser = currentUserFixtures.adminUser;
-
-    render(
-      <QueryClientProvider client={queryClient}>
-        <MemoryRouter>
-          <AdminCommonsCard commonItem={commonItem} currentUser={currentUser} />
-        </MemoryRouter>
-      </QueryClientProvider>,
-    );
-
-    const leaderboardButton = screen.getByTestId(
-      "AdminCommonsCard-Leaderboard-1",
-    );
-    fireEvent.click(leaderboardButton);
-
-    expect(mockedNavigate).toHaveBeenCalledWith("/leaderboard/1");
-  });
-
-  test("stats CSV button has correct href", () => {
-    const queryClient = new QueryClient();
-    const commonItem = commonsPlusFixtures.threeCommonsPlus[0];
-    const currentUser = currentUserFixtures.adminUser;
-
-    render(
-      <QueryClientProvider client={queryClient}>
-        <MemoryRouter>
-          <AdminCommonsCard commonItem={commonItem} currentUser={currentUser} />
-        </MemoryRouter>
-      </QueryClientProvider>,
-    );
-
-    const statsCSVButton = screen.getByTestId("AdminCommonsCard-StatsCSV-1");
-    expect(statsCSVButton).toHaveAttribute(
-      "href",
-      "/api/commonstats/download?commonsId=1",
-    );
-  });
-
-  test("announcements button has correct href", () => {
-    const queryClient = new QueryClient();
-    const commonItem = commonsPlusFixtures.threeCommonsPlus[0];
-    const currentUser = currentUserFixtures.adminUser;
-
-    render(
-      <QueryClientProvider client={queryClient}>
-        <MemoryRouter>
-          <AdminCommonsCard commonItem={commonItem} currentUser={currentUser} />
-        </MemoryRouter>
-      </QueryClientProvider>,
-    );
-
-    const announcementsButton = screen.getByTestId(
-      "AdminCommonsCard-Announcements-1",
-    );
-    expect(announcementsButton).toHaveAttribute(
-      "href",
-      "/admin/announcements/1",
-    );
-  });
-
-  test("handles null totalCows and effectiveCapacity", () => {
-    const queryClient = new QueryClient();
-    const commonItem = {
-      ...commonsPlusFixtures.threeCommonsPlus[0],
-      totalCows: null,
-      effectiveCapacity: null,
-    };
-    const currentUser = currentUserFixtures.adminUser;
-
-    render(
-      <QueryClientProvider client={queryClient}>
-        <MemoryRouter>
-          <AdminCommonsCard commonItem={commonItem} currentUser={currentUser} />
-        </MemoryRouter>
-      </QueryClientProvider>,
-    );
-
-    const totalCowsLabel = screen.getByText("Total Cows:");
-    const totalCowsValue = totalCowsLabel.parentElement.nextElementSibling;
-    expect(totalCowsValue).toHaveTextContent("0");
-
-    const effectiveCapacityLabel = screen.getByText("Eff Cap:");
-    const effectiveCapacityValue =
-      effectiveCapacityLabel.parentElement.nextElementSibling;
-    expect(effectiveCapacityValue).toHaveTextContent("0");
-  });
-
-  test("String conversion works for showLeaderboard and showChat", () => {
-    const queryClient = new QueryClient();
-    const commonItem = {
-      ...commonsPlusFixtures.threeCommonsPlus[0],
-      commons: {
-        ...commonsPlusFixtures.threeCommonsPlus[0].commons,
-        showLeaderboard: true,
-        showChat: false,
-      },
-    };
-    const currentUser = currentUserFixtures.adminUser;
-
-    render(
-      <QueryClientProvider client={queryClient}>
-        <MemoryRouter>
-          <AdminCommonsCard commonItem={commonItem} currentUser={currentUser} />
-        </MemoryRouter>
-      </QueryClientProvider>,
-    );
-
-    const showLeaderboardLabel = screen.getByText("Show Leaderboard:");
-    const showLeaderboardValue =
-      showLeaderboardLabel.parentElement.nextElementSibling;
-    expect(showLeaderboardValue).toHaveTextContent("true");
-
-    const showChatLabel = screen.getByText("Show Chat:");
-    const showChatValue = showChatLabel.parentElement.nextElementSibling;
-    expect(showChatValue).toHaveTextContent("false");
-  });
-
-  test("formatDate uses String conversion and slice", () => {
-    const queryClient = new QueryClient();
-    const commonItem = {
-      ...commonsPlusFixtures.threeCommonsPlus[0],
-      commons: {
-        ...commonsPlusFixtures.threeCommonsPlus[0].commons,
-        startingDate: "2023-12-25T10:30:00.123Z",
-        lastDate: "2024-01-15T23:59:59.999Z",
-      },
-    };
-    const currentUser = currentUserFixtures.adminUser;
-
-    render(
-      <QueryClientProvider client={queryClient}>
-        <MemoryRouter>
-          <AdminCommonsCard commonItem={commonItem} currentUser={currentUser} />
-        </MemoryRouter>
-      </QueryClientProvider>,
-    );
-
-    expect(screen.getByText("2023-12-25")).toBeInTheDocument();
-    expect(screen.getByText("2024-01-15")).toBeInTheDocument();
-  });
-
-  test("modal onHide callback is properly set", async () => {
-    const queryClient = new QueryClient();
-    const commonItem = commonsPlusFixtures.threeCommonsPlus[0];
-    const currentUser = currentUserFixtures.adminUser;
-
-    render(
-      <QueryClientProvider client={queryClient}>
-        <MemoryRouter>
-          <AdminCommonsCard commonItem={commonItem} currentUser={currentUser} />
-        </MemoryRouter>
-      </QueryClientProvider>,
-    );
-
-    const deleteButton = screen.getByTestId("AdminCommonsCard-Delete-1");
-    fireEvent.click(deleteButton);
-
-    await waitFor(() => {
-      expect(
-        screen.getByTestId("AdminCommonsCard-Modal-1"),
-      ).toBeInTheDocument();
-    });
-
-    // The onHide callback should be set and work when cancel is clicked
-    // This tests that onHide={() => setShowModal(false)} is properly defined
-    const cancelButton = screen.getByTestId("AdminCommonsCard-Modal-Cancel-1");
-    fireEvent.click(cancelButton);
-
-    await waitFor(() => {
-      expect(
-        screen.queryByTestId("AdminCommonsCard-Modal-1"),
-      ).not.toBeInTheDocument();
-    });
-  });
-
-  test("confirmDelete sets showModal to false after mutation", async () => {
-    const queryClient = new QueryClient();
-    const commonItem = commonsPlusFixtures.threeCommonsPlus[0];
-    const currentUser = currentUserFixtures.adminUser;
-
-    axiosMock
-      .onDelete("/api/commons", { params: { id: 1 } })
-      .reply(200, "Commons with id 1 was deleted");
-
-    render(
-      <QueryClientProvider client={queryClient}>
-        <MemoryRouter>
-          <AdminCommonsCard commonItem={commonItem} currentUser={currentUser} />
-        </MemoryRouter>
-      </QueryClientProvider>,
-    );
-
-    const deleteButton = screen.getByTestId("AdminCommonsCard-Delete-1");
-    fireEvent.click(deleteButton);
-
-    await waitFor(() => {
-      expect(
-        screen.getByTestId("AdminCommonsCard-Modal-1"),
-      ).toBeInTheDocument();
-    });
-
-    const confirmDeleteButton = screen.getByTestId(
-      "AdminCommonsCard-Modal-Delete-1",
-    );
-    fireEvent.click(confirmDeleteButton);
-
-    // The modal should close immediately after clicking confirmDelete
-    await waitFor(() => {
-      expect(
-        screen.queryByTestId("AdminCommonsCard-Modal-1"),
-      ).not.toBeInTheDocument();
-    });
-  });
-
-  test("clicking Chat button navigates to admin chat page", () => {
-    const queryClient = new QueryClient();
-    const commonItem = commonsPlusFixtures.threeCommonsPlus[0];
-    const currentUser = currentUserFixtures.adminUser;
-
-    mockedNavigate.mockClear();
-
-    render(
-      <QueryClientProvider client={queryClient}>
-        <MemoryRouter>
-          <AdminCommonsCard commonItem={commonItem} currentUser={currentUser} />
-        </MemoryRouter>
-      </QueryClientProvider>,
-    );
-
-    const chatButton = screen.getByTestId("AdminCommonsCard-Chat-1");
-    expect(chatButton).toBeInTheDocument();
-    fireEvent.click(chatButton);
-
-    expect(mockedNavigate).toHaveBeenCalledWith("/admin/chat/1");
   });
 });

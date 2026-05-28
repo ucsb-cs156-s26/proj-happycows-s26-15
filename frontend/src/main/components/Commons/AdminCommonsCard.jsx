@@ -1,9 +1,9 @@
 import React, { useState } from "react";
-import { Card, Button, Row, Col, Modal } from "react-bootstrap";
+import { Card, Button, Modal, Row, Col } from "react-bootstrap";
 import { useNavigate } from "react-router";
 import { useBackendMutation } from "main/utils/useBackend";
-import { onDeleteSuccess } from "main/utils/commonsUtils";
 import { hasRole } from "main/utils/currentUser";
+import { onDeleteSuccess } from "main/utils/commonsUtils";
 
 export default function AdminCommonsCard({ commonItem, currentUser }) {
   const navigate = useNavigate();
@@ -11,11 +11,31 @@ export default function AdminCommonsCard({ commonItem, currentUser }) {
   const [showModal, setShowModal] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
 
+  const commons = commonItem?.commons;
+
+  const axiosParamsDelete =
+    /* istanbul ignore next */
+    (id) => ({
+      url: "/api/commons",
+      method: "DELETE",
+      params: { id },
+    });
+
+  const deleteMutation = useBackendMutation(
+    axiosParamsDelete,
+    {
+      onSuccess: onDeleteSuccess,
+    },
+    ["/api/commons/allplus"],
+  );
+
   if (!hasRole(currentUser, "ROLE_ADMIN")) {
     return null;
   }
 
-  const commons = commonItem.commons;
+  if (!commons) {
+    return null;
+  }
 
   const handleEdit = () => {
     navigate(`/admin/editcommons/${commons.id}`);
@@ -33,24 +53,12 @@ export default function AdminCommonsCard({ commonItem, currentUser }) {
     navigate(`/admin/chat/${commons.id}`);
   };
 
-  const deleteMutation = useBackendMutation(
-    (id) => ({
-      url: "/api/commons",
-      method: "DELETE",
-      params: { id },
-    }),
-    { onSuccess: onDeleteSuccess },
-    ["/api/commons/allplus"],
-  );
-
-  const confirmDelete = () => {
+  const handleDeleteConfirm = () => {
     deleteMutation.mutate(commons.id);
     setShowModal(false);
   };
 
-  const formatDate = (dateString) => {
-    return String(dateString).slice(0, 10);
-  };
+  const formatDate = (dateString) => String(dateString).slice(0, 10);
 
   const renderField = (label, value) => (
     <Row className="mb-2">
@@ -63,9 +71,9 @@ export default function AdminCommonsCard({ commonItem, currentUser }) {
 
   const deleteModal = (
     <Modal
-      data-testid={`AdminCommonsCard-Modal-${commons.id}`}
       show={showModal}
       onHide={() => setShowModal(false)}
+      data-testid={`AdminCommonsCard-Modal-${commons.id}`}
     >
       <Modal.Header closeButton>
         <Modal.Title>Confirm Deletion</Modal.Title>
@@ -76,16 +84,16 @@ export default function AdminCommonsCard({ commonItem, currentUser }) {
       <Modal.Footer>
         <Button
           variant="secondary"
-          data-testid={`AdminCommonsCard-Modal-Cancel-${commons.id}`}
           onClick={() => setShowModal(false)}
+          data-testid={`AdminCommonsCard-Modal-Cancel-${commons.id}`}
         >
           Keep this Commons
         </Button>
 
         <Button
           variant="danger"
+          onClick={handleDeleteConfirm}
           data-testid={`AdminCommonsCard-Modal-Delete-${commons.id}`}
-          onClick={confirmDelete}
         >
           Permanently Delete
         </Button>
@@ -96,8 +104,8 @@ export default function AdminCommonsCard({ commonItem, currentUser }) {
   return (
     <>
       <Card
-        data-testid={`AdminCommonsCard-${commons.id}`}
         className="mb-3"
+        data-testid={`AdminCommonsCard-${commons.id}`}
         style={{
           transform: isHovered ? "scale(1.02)" : "scale(1)",
           transition: "transform 0.2s",

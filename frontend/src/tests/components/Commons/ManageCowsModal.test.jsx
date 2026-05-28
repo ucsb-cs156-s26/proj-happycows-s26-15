@@ -346,4 +346,20 @@ describe("ManageCowsModal", () => {
       "display: flex; justify-content: right",
     );
   });
+
+  test("close button has explicit black text color style", () => {
+    render(
+      <ManageCowsModal
+        isOpen={true}
+        onClose={mockOnClose}
+        message="buy"
+        setNumber={mockSetNumber}
+      />,
+    );
+
+    const closeButton = screen.getByTestId("buy-sell-cow-modal-close");
+
+    expect(closeButton.style.color).toBe("rgb(0, 0, 0)");
+    expect(closeButton).not.toHaveStyle({ color: "" });
+  });
 });
